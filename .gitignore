@@ -1,0 +1,28 @@
+# .NET build outputs
+**/bin/
+**/obj/
+publish/
+
+# Visual Studio & IDE files
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Debug symbols & logs
+*.pdb
+*.log
+install.log
+msi_test.log
+
+# WiX Toolset intermediate files
+.wix/
+Output/*.wixpdb
+
+# OS files
+Thumbs.db
+Desktop.ini
+.BIN/

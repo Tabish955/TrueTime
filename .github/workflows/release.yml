@@ -1,0 +1,81 @@
+name: Build & Release TrueTime
+
+on:
+  push:
+    tags:
+      - 'v*'
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build & Package TrueTime
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Setup WiX Toolset
+        run: |
+          dotnet tool install --global wix
+          wix extension add WixToolset.UI.wixext
+          wix extension add WixToolset.Util.wixext
+
+      - name: Setup Inno Setup
+        uses: stewartcelani/runtimes-setup-inno-setup@v1
+
+      - name: Compile Solution (Release)
+        run: dotnet build NetTimeService/NetTimeService.sln -c Release
+
+      - name: Publish Clean Native Assemblies
+        shell: cmd
+        run: publish.bat
+
+      - name: Build WiX 5 MSI Package
+        run: |
+          wix build -arch x64 Package.wxs -ext WixToolset.UI.wixext -ext WixToolset.Util.wixext -o Output/TrueTimeSetup.msi
+
+      - name: Build Inno Setup Executable
+        run: |
+          iscc SetupScript.iss
+
+      - name: Create Portable Archive
+        shell: pwsh
+        run: |
+          Compress-Archive -Path publish/* -DestinationPath Output/TrueTime-v1.0.0-Portable.zip -Force
+
+      - name: Calculate SHA-256 Checksums
+        shell: pwsh
+        run: |
+          Get-FileHash Output/TrueTimeSetup.msi, Output/TrueTimeSetup.exe, Output/TrueTime-v1.0.0-Portable.zip | Format-List
+
+      - name: Upload Build Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: TrueTime-Release-Binaries
+          path: |
+            Output/TrueTimeSetup.msi
+            Output/TrueTimeSetup.exe
+            Output/TrueTime-v1.0.0-Portable.zip
+
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            Output/TrueTimeSetup.msi
+            Output/TrueTimeSetup.exe
+            Output/TrueTime-v1.0.0-Portable.zip
+          draft: false
+          prerelease: false
+          generate_release_notes: true

@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <AssemblyName>TrueTime.Tray</AssemblyName>
+    <Nullable>enable</Nullable>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <ApplicationIcon>app.ico</ApplicationIcon>
+    <Version>1.0.0.0</Version>
+    <AssemblyVersion>1.0.0.0</AssemblyVersion>
+    <FileVersion>1.0.0.0</FileVersion>
+    <Product>TrueTime Professional</Product>
+    <Company>TrueTime Software</Company>
+    <Copyright>Copyright © 2026 TrueTime Software</Copyright>
+    <Description>TrueTime Professional System Tray Monitor</Description>
+    <Authors>TrueTime Software</Authors>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Content Update="app.ico">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>Always</CopyToPublishDirectory>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="..\NetTimeService\Models\SyncStatus.cs" Link="Models\SyncStatus.cs" />
+  </ItemGroup>
+
+</Project>

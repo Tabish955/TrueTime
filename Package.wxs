@@ -1,0 +1,123 @@
+﻿<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+     xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui">
+  <Package Name="TrueTime Professional"
+           Manufacturer="TrueTime Software"
+           Version="1.0.0.0"
+           UpgradeCode="B95A2F21-E17E-4467-9A1A-A6D9BC67E284"
+           Scope="perMachine">
+    <MajorUpgrade DowngradeErrorMessage="A newer version of [ProductName] is already installed." />
+    <MediaTemplate EmbedCab="yes" />
+
+    <Icon Id="AppIcon.ico" SourceFile="publish\GUI\app.ico" />
+    <Property Id="ARPPRODUCTICON" Value="AppIcon.ico" />
+
+    <!-- Standard Directories -->
+    <StandardDirectory Id="ProgramFiles64Folder">
+      <Directory Id="INSTALLFOLDER" Name="TrueTime" />
+    </StandardDirectory>
+
+    <StandardDirectory Id="ProgramMenuFolder">
+      <Directory Id="ApplicationProgramsFolder" Name="TrueTime Professional" />
+    </StandardDirectory>
+
+    <StandardDirectory Id="DesktopFolder" />
+    <StandardDirectory Id="StartupFolder" />
+
+    <ComponentGroup Id="ProductComponents" Directory="INSTALLFOLDER">
+      <!-- 1. Background Service Executable with Native Windows Service Registration -->
+      <Component Id="ServiceExeComponent">
+        <File Id="ServiceExe" Source="publish\Service\TrueTimeService.exe" KeyPath="yes" />
+        <ServiceInstall Id="ServiceInstaller"
+                        Type="ownProcess"
+                        Name="TrueTimeService"
+                        DisplayName="TrueTime Synchronization Service"
+                        Description="Authoritative multi-server network time synchronization service with automated failover."
+                        Start="auto"
+                        Account="LocalSystem"
+                        ErrorControl="normal"
+                        Vital="yes" />
+        <ServiceControl Id="ServiceController"
+                        Name="TrueTimeService"
+                        Start="install"
+                        Stop="both"
+                        Remove="uninstall"
+                        Wait="yes" />
+      </Component>
+
+      <!-- 2. Desktop Tray GUI Executable with Start Menu, Desktop & Startup Shortcuts, and Run Keys -->
+      <Component Id="TrayExeComponent">
+        <File Id="TrayExe" Source="publish\GUI\TrueTime.Tray.exe" KeyPath="yes">
+          <Shortcut Id="StartMenuShortcut"
+                    Directory="ApplicationProgramsFolder"
+                    Name="TrueTime"
+                    WorkingDirectory="INSTALLFOLDER"
+                    Advertise="no"
+                    Icon="AppIcon.ico" />
+          <Shortcut Id="DesktopShortcut"
+                    Directory="DesktopFolder"
+                    Name="TrueTime"
+                    WorkingDirectory="INSTALLFOLDER"
+                    Advertise="no"
+                    Icon="AppIcon.ico" />
+          <Shortcut Id="StartupShortcut"
+                    Directory="StartupFolder"
+                    Name="TrueTime"
+                    WorkingDirectory="INSTALLFOLDER"
+                    Advertise="no"
+                    Icon="AppIcon.ico" />
+        </File>
+        <RegistryValue Root="HKLM"
+                       Key="SOFTWARE\Microsoft\Windows\CurrentVersion\Run"
+                       Name="TrueTimeTray"
+                       Type="string"
+                       Value="&quot;[INSTALLFOLDER]TrueTime.Tray.exe&quot;" />
+        <RegistryValue Root="HKCU"
+                       Key="SOFTWARE\Microsoft\Windows\CurrentVersion\Run"
+                       Name="TrueTimeTray"
+                       Type="string"
+                       Value="&quot;[INSTALLFOLDER]TrueTime.Tray.exe&quot;" />
+      </Component>
+
+      <!-- 3. Clean up Start Menu Folder on Uninstall -->
+      <Component Id="StartMenuDirComponent" Directory="ApplicationProgramsFolder">
+        <RemoveFolder Id="CleanUpStartMenu" Directory="ApplicationProgramsFolder" On="uninstall" />
+        <RegistryValue Root="HKCU" Key="Software\TrueTime" Name="Installed" Type="integer" Value="1" KeyPath="yes" />
+      </Component>
+
+      <!-- 4. All Supporting Service & GUI Assemblies and Assets -->
+      <Files Include="publish\Service\**">
+        <Exclude Files="publish\Service\TrueTimeService.exe" />
+      </Files>
+      <Files Include="publish\GUI\**">
+        <Exclude Files="publish\GUI\TrueTime.Tray.exe" />
+      </Files>
+    </ComponentGroup>
+
+    <Feature Id="Main" Title="TrueTime Core Application" Level="1">
+      <ComponentGroupRef Id="ProductComponents" />
+    </Feature>
+
+    <!-- Auto-launch immediately after installation completes -->
+    <CustomAction Id="AutoLaunchTrayApp"
+                  Directory="INSTALLFOLDER"
+                  ExeCommand="&quot;[INSTALLFOLDER]TrueTime.Tray.exe&quot;"
+                  Execute="immediate"
+                  Return="asyncNoWait" />
+
+    <InstallExecuteSequence>
+      <Custom Action="AutoLaunchTrayApp" After="InstallFinalize" Condition="NOT Installed" />
+    </InstallExecuteSequence>
+
+    <!-- Post-Install UI Experience -->
+    <Property Id="WIXUI_EXITDIALOGOPTIONALCHECKBOXTEXT" Value="Launch TrueTime System Tray Monitor" />
+    <Property Id="WIXUI_EXITDIALOGOPTIONALCHECKBOX" Value="1" />
+    <Property Id="WixShellExecTarget" Value="[#TrayExe]" />
+    <CustomAction Id="LaunchApplication" DllEntry="WixShellExec" Impersonate="yes" BinaryRef="Wix4UtilCA_$(sys.BUILDARCHSHORT)" />
+
+    <UI>
+      <ui:WixUI Id="WixUI_InstallDir" InstallDirectory="INSTALLFOLDER" />
+      <Publish Dialog="ExitDialog" Control="Finish" Event="DoAction" Value="LaunchApplication" Condition="WIXUI_EXITDIALOGOPTIONALCHECKBOX = 1 and NOT Installed" />
+    </UI>
+
+  </Package>
+</Wix>
