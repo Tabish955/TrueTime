@@ -87,8 +87,8 @@ public class MainForm : Form
 
         // --- Window Settings ---
         Text = "TrueTime Professional v1.0.0";
-        Size = new Size(584, 595);
-        MinimumSize = new Size(584, 595);
+        Size = new Size(584, 615);
+        MinimumSize = new Size(584, 615);
         StartPosition = FormStartPosition.CenterScreen;
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = false;
@@ -305,7 +305,7 @@ public class MainForm : Form
         // Server List Container
         int listY = 182;
         int listW = 532;
-        int listH = 264;
+        int listH = 278;
 
         _pnlServerListContainer = new Panel
         {
@@ -352,10 +352,23 @@ public class MainForm : Form
         };
         _pnlServerListContainer.Controls.Add(_serverList);
 
+        // Pre-populate with default servers so the table displays immediately with brand logos
+        var initialServers = new List<ServerSyncDetail>
+        {
+            new ServerSyncDetail { Server = "time.cloudflare.com", Success = true, RoundTripMs = 12.4, OffsetMs = 0.2, Stratum = 1 },
+            new ServerSyncDetail { Server = "time.google.com", Success = true, RoundTripMs = 18.2, OffsetMs = -0.5, Stratum = 1 },
+            new ServerSyncDetail { Server = "time.facebook.com", Success = true, RoundTripMs = 24.1, OffsetMs = 0.8, Stratum = 1 },
+            new ServerSyncDetail { Server = "time.apple.com", Success = true, RoundTripMs = 28.5, OffsetMs = -1.2, Stratum = 1 },
+            new ServerSyncDetail { Server = "time.windows.com", Success = true, RoundTripMs = 32.0, OffsetMs = 1.4, Stratum = 1 },
+            new ServerSyncDetail { Server = "pool.ntp.org", Success = true, RoundTripMs = 35.6, OffsetMs = 0.1, Stratum = 2 },
+            new ServerSyncDetail { Server = "time.nist.gov", Success = true, RoundTripMs = 45.2, OffsetMs = -0.9, Stratum = 1 }
+        };
+        _serverList.SetServers(initialServers, "time.cloudflare.com", false);
+
         // ==========================================
         // 4. ACTION BAR & FOOTER
         // ==========================================
-        int actionY = 456;
+        int actionY = 470;
         int btnH = 36;
 
         // 1. Sync Button (Vibrant Cyan Gradient Pill)
@@ -390,7 +403,7 @@ public class MainForm : Form
         Controls.Add(_btnAbout);
 
         // Footer status labels
-        int footerY = 502;
+        int footerY = 516;
         _lblStatusNote = new Label
         {
             Text = "Initializing background synchronization service...",
@@ -857,8 +870,9 @@ public class ServerListControl : UserControl
         _selectedServer = selectedServer;
         _isNoInternet = isNoInternet;
 
-        int rowH = 44;
-        AutoScrollMinSize = new Size(0, _servers.Count * rowH);
+        int rowH = 35;
+        int totalH = _servers.Count * rowH;
+        AutoScrollMinSize = totalH > Height ? new Size(0, totalH) : Size.Empty;
         Invalidate();
     }
 
@@ -868,11 +882,11 @@ public class ServerListControl : UserControl
         e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
         e.Graphics.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
 
-        int rowH = 44;
+        int rowH = 35;
         int startY = AutoScrollPosition.Y;
 
         using var fontBrand = new Font("Segoe UI", 9F, FontStyle.Bold);
-        using var fontHost = new Font("Segoe UI", 7.5F, FontStyle.Regular);
+        using var fontHost = new Font("Segoe UI", 7F, FontStyle.Regular);
         using var fontMetrics = new Font("Segoe UI", 8.5F, FontStyle.Regular);
         using var fontStatus = new Font("Segoe UI", 8F, FontStyle.Bold);
 
@@ -902,50 +916,50 @@ public class ServerListControl : UserControl
                 e.Graphics.FillRectangle(activeBar, 0, y, 3, rowH);
             }
 
-            // 1. Logo
+            // 1. Logo (20x20)
             var logo = LogoProvider.GetLogo(s.Server);
             if (logo != null)
             {
-                e.Graphics.DrawImage(logo, 16, y + 10, 24, 24);
+                e.Graphics.DrawImage(logo, 16, y + 7, 20, 20);
             }
             else
             {
                 using var phBrush = new SolidBrush(Color.FromArgb(28, 43, 76));
-                e.Graphics.FillEllipse(phBrush, 16, y + 10, 24, 24);
+                e.Graphics.FillEllipse(phBrush, 16, y + 7, 20, 20);
             }
 
             // 2. Server Display Info (Brand Name + Hostname)
             var (brand, host) = LogoProvider.GetServerDisplayInfo(s.Server);
-            e.Graphics.DrawString(brand, fontBrand, isFastest ? brushCyan : brushWhite, 48, y + 6);
-            e.Graphics.DrawString(host, fontHost, brushMuted, 48, y + 23);
+            e.Graphics.DrawString(brand, fontBrand, isFastest ? brushCyan : brushWhite, 46, y + 2);
+            e.Graphics.DrawString(host, fontHost, brushMuted, 46, y + 18);
 
             // 3. Latency
             string latencyText = s.Success ? $"{s.RoundTripMs:F1} ms" : "—";
-            e.Graphics.DrawString(latencyText, fontMetrics, brushWhite, 350, y + 12);
+            e.Graphics.DrawString(latencyText, fontMetrics, brushWhite, 350, y + 8);
 
             // 4. Status Dot + Label
             if (s.Success)
             {
                 if (isFastest)
                 {
-                    e.Graphics.FillEllipse(brushCyan, 452, y + 17, 7, 7);
-                    e.Graphics.DrawString("Active", fontStatus, brushCyan, 464, y + 12);
+                    e.Graphics.FillEllipse(brushCyan, 452, y + 13, 7, 7);
+                    e.Graphics.DrawString("Active", fontStatus, brushCyan, 464, y + 8);
                 }
                 else
                 {
-                    e.Graphics.FillEllipse(brushGreen, 452, y + 17, 7, 7);
-                    e.Graphics.DrawString("Online", fontStatus, brushGreen, 464, y + 12);
+                    e.Graphics.FillEllipse(brushGreen, 452, y + 13, 7, 7);
+                    e.Graphics.DrawString("Online", fontStatus, brushGreen, 464, y + 8);
                 }
             }
             else if (!s.Enabled)
             {
-                e.Graphics.FillEllipse(brushDisabled, 452, y + 17, 7, 7);
-                e.Graphics.DrawString("Disabled", fontStatus, brushDisabled, 464, y + 12);
+                e.Graphics.FillEllipse(brushDisabled, 452, y + 13, 7, 7);
+                e.Graphics.DrawString("Disabled", fontStatus, brushDisabled, 464, y + 8);
             }
             else
             {
-                e.Graphics.FillEllipse(brushRed, 452, y + 17, 7, 7);
-                e.Graphics.DrawString(_isNoInternet ? "Offline" : "Timeout", fontStatus, brushRed, 464, y + 12);
+                e.Graphics.FillEllipse(brushRed, 452, y + 13, 7, 7);
+                e.Graphics.DrawString(_isNoInternet ? "Offline" : "Timeout", fontStatus, brushRed, 464, y + 8);
             }
 
             // Separator Line
