@@ -21,6 +21,7 @@ msi_test.log
 # WiX Toolset intermediate files
 .wix/
 Output/*.wixpdb
+website/downloads/*.wixpdb
 
 # OS files
 Thumbs.db

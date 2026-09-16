@@ -23,6 +23,7 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <CopyToPublishDirectory>Always</CopyToPublishDirectory>
     </Content>
+    <EmbeddedResource Include="Resources\Logos\*.png" />
   </ItemGroup>
 
   <ItemGroup>

@@ -6,6 +6,7 @@ using System.Drawing.Drawing2D;
 using System.IO;
 using System.Linq;
 using System.Net.NetworkInformation;
+using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using NetTimeService.Models;
@@ -14,14 +15,21 @@ namespace NetTime.Tray;
 
 public class MainForm : Form
 {
+    [DllImport("dwmapi.dll")]
+    private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int attrValue, int attrSize);
+    private const int DWMWA_USE_IMMERSIVE_DARK_MODE = 20;
+
     private readonly NotifyIcon _notifyIcon;
     private readonly System.Windows.Forms.Timer _clockTimer;
     private readonly System.Windows.Forms.Timer _statusPollTimer;
 
     // Header Controls
+    private readonly PictureBox _picAppLogo;
     private readonly Label _lblHeaderTitle;
     private readonly Label _lblHeaderSubtitle;
-    private readonly Label _lblHealthBadge;
+    private readonly Panel _pnlHealthBadge;
+    private readonly Label _lblHealthBadgeMain;
+    private readonly Label _lblHealthBadgeSub;
 
     // Dual Dashboard Cards
     private readonly Panel _pnlClockCard;
@@ -35,7 +43,9 @@ public class MainForm : Form
     // Server Table
     private readonly Label _lblTableTitle;
     private readonly Label _lblTableSubtitle;
-    private readonly ListView _lvServers;
+    private readonly Panel _pnlServerListContainer;
+    private readonly Panel _pnlServerListHeader;
+    private readonly ServerListControl _serverList;
 
     // Bottom Action Bar Controls
     private readonly Label _lblStatusNote;
@@ -44,7 +54,6 @@ public class MainForm : Form
     private readonly Button _btnAuditLog;
     private readonly Button _btnSettings;
     private readonly Button _btnAbout;
-    private readonly Button _btnClose;
 
     // State Tracking
     private TimeSyncSnapshot? _lastSnapshot;
@@ -56,19 +65,36 @@ public class MainForm : Form
     private bool _isUpdating = false;
     private int _consecutiveFailures = 0;
 
+    // Palette: Deep Midnight Obsidian Glass
+    private static readonly Color BgColor = Color.FromArgb(11, 18, 34);          // #0B1222
+    private static readonly Color CardBgColor = Color.FromArgb(17, 27, 51);      // #111B33
+    private static readonly Color CardBorderColor = Color.FromArgb(30, 45, 77);  // #1E2D4D
+    private static readonly Color AccentCyan = Color.FromArgb(0, 210, 255);       // #00D2FF
+    private static readonly Color TextWhite = Color.FromArgb(248, 250, 252);      // #F8FAFC
+    private static readonly Color TextMuted = Color.FromArgb(148, 163, 184);      // #94A3B8
+    private static readonly Color TextDim = Color.FromArgb(100, 116, 139);        // #64748B
+    private static readonly Color HealthGreen = Color.FromArgb(16, 185, 129);     // #10B981
+    private static readonly Color HealthAmber = Color.FromArgb(245, 158, 11);     // #F59E0B
+    private static readonly Color HealthRed = Color.FromArgb(239, 68, 68);        // #EF4444
+
     public MainForm(NotifyIcon notifyIcon)
     {
         _notifyIcon = notifyIcon;
 
+        // Double buffering for smooth flicker-free rendering
+        SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint | ControlStyles.OptimizedDoubleBuffer, true);
+        DoubleBuffered = true;
+
         // --- Window Settings ---
-        Text = "TrueTime Professional";
-        Size = new Size(592, 495);
-        MinimumSize = new Size(592, 495);
+        Text = "TrueTime Professional v1.0.0";
+        Size = new Size(584, 595);
+        MinimumSize = new Size(584, 595);
         StartPosition = FormStartPosition.CenterScreen;
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = false;
         Font = new Font("Segoe UI", 9F);
-        BackColor = Color.FromArgb(248, 250, 252); // Soft modern slate-50
+        BackColor = BgColor;
+        ForeColor = TextWhite;
         Icon = notifyIcon.Icon;
 
         // ==========================================
@@ -76,339 +102,448 @@ public class MainForm : Form
         // ==========================================
         var pnlHeader = new Panel
         {
-            Location = new Point(16, 12),
-            Size = new Size(544, 40),
+            Location = new Point(18, 12),
+            Size = new Size(532, 42),
             BackColor = Color.Transparent
         };
         Controls.Add(pnlHeader);
 
+        // Neon Logo PictureBox
+        _picAppLogo = new PictureBox
+        {
+            Location = new Point(0, 2),
+            Size = new Size(38, 38),
+            SizeMode = PictureBoxSizeMode.Zoom,
+            Image = LogoProvider.GetAppLogo(),
+            BackColor = Color.Transparent
+        };
+        pnlHeader.Controls.Add(_picAppLogo);
+
+        // Header Title (Dual-colored custom paint)
         _lblHeaderTitle = new Label
         {
-            Text = "TrueTime Professional",
-            Location = new Point(0, 0),
-            AutoSize = true,
-            Font = new Font("Segoe UI", 12.5F, FontStyle.Bold),
-            ForeColor = Color.FromArgb(15, 23, 42) // Slate-900
+            Location = new Point(44, 1),
+            Size = new Size(330, 24),
+            BackColor = Color.Transparent
+        };
+        _lblHeaderTitle.Paint += (s, e) =>
+        {
+            e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+            e.Graphics.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
+            using var fontBold = new Font("Segoe UI", 13.5F, FontStyle.Bold);
+            TextRenderer.DrawText(e.Graphics, "TrueTime ", fontBold, new Point(0, 0), Color.White);
+            int offset = TextRenderer.MeasureText(e.Graphics, "TrueTime ", fontBold).Width - 8;
+            TextRenderer.DrawText(e.Graphics, "Professional", fontBold, new Point(offset, 0), AccentCyan);
         };
         pnlHeader.Controls.Add(_lblHeaderTitle);
 
         _lblHeaderSubtitle = new Label
         {
             Text = "Precision Multi-Server Network Time Synchronization",
-            Location = new Point(1, 23),
+            Location = new Point(45, 24),
             AutoSize = true,
-            Font = new Font("Segoe UI", 8.5F, FontStyle.Regular),
-            ForeColor = Color.FromArgb(100, 116, 139) // Slate-500
+            Font = new Font("Segoe UI", 8F, FontStyle.Regular),
+            ForeColor = TextMuted,
+            BackColor = Color.Transparent
         };
         pnlHeader.Controls.Add(_lblHeaderSubtitle);
 
-        _lblHealthBadge = new Label
+        // Right-side Health Badge Container
+        _pnlHealthBadge = new Panel
         {
-            Text = "● Connecting...",
-            Location = new Point(416, 6),
-            Size = new Size(128, 26),
+            Location = new Point(394, 2),
+            Size = new Size(138, 38),
+            BackColor = Color.FromArgb(4, 47, 46) // Deep emerald glass
+        };
+        _pnlHealthBadge.Paint += DrawHealthBadgeContainer;
+        pnlHeader.Controls.Add(_pnlHealthBadge);
+
+        _lblHealthBadgeMain = new Label
+        {
+            Text = "✔ In Sync",
+            Location = new Point(6, 4),
+            Size = new Size(126, 16),
             TextAlign = ContentAlignment.MiddleCenter,
             Font = new Font("Segoe UI", 8.5F, FontStyle.Bold),
-            ForeColor = Color.FromArgb(71, 85, 105),
-            BackColor = Color.FromArgb(241, 245, 249)
+            ForeColor = HealthGreen,
+            BackColor = Color.Transparent
         };
-        _lblHealthBadge.Paint += DrawHealthBadgePill;
-        pnlHeader.Controls.Add(_lblHealthBadge);
+        _pnlHealthBadge.Controls.Add(_lblHealthBadgeMain);
+
+        _lblHealthBadgeSub = new Label
+        {
+            Text = "Last sync: Initializing...",
+            Location = new Point(4, 20),
+            Size = new Size(130, 14),
+            TextAlign = ContentAlignment.MiddleCenter,
+            Font = new Font("Segoe UI", 7F, FontStyle.Regular),
+            ForeColor = Color.FromArgb(110, 231, 183),
+            BackColor = Color.Transparent
+        };
+        _pnlHealthBadge.Controls.Add(_lblHealthBadgeSub);
 
         // ==========================================
-        // 2. DUAL BALANCED DASHBOARD CARDS (Side-by-Side)
+        // 2. DUAL BALANCED DASHBOARD CARDS
         // ==========================================
-        int cardY = 56;
-        int cardW = 266;
+        int cardY = 60;
+        int cardW = 260;
         int cardH = 88;
 
-        // --- Card 1: Local Clock Card ---
-        _pnlClockCard = CreateModernCard(16, cardY, cardW, cardH);
+        // --- Card 1: System Time ---
+        _pnlClockCard = CreateModernGlassCard(18, cardY, cardW, cardH);
         Controls.Add(_pnlClockCard);
 
         var lblClockHeader = new Label
         {
-            Text = "LOCAL SYSTEM TIME",
-            Location = new Point(12, 10),
+            Text = "🕒  Current System Time",
+            Location = new Point(14, 10),
             AutoSize = true,
-            Font = new Font("Segoe UI", 7.5F, FontStyle.Bold),
-            ForeColor = Color.FromArgb(100, 116, 139),
-            UseMnemonic = false
+            Font = new Font("Segoe UI", 8F, FontStyle.Bold),
+            ForeColor = TextMuted,
+            BackColor = Color.Transparent
         };
         _pnlClockCard.Controls.Add(lblClockHeader);
 
         _lblClockTime = new Label
         {
             Text = DateTime.Now.ToString("hh:mm:ss tt"),
-            Location = new Point(11, 26),
+            Location = new Point(12, 28),
             AutoSize = true,
-            Font = new Font("Segoe UI", 16F, FontStyle.Bold),
-            ForeColor = Color.FromArgb(15, 23, 42),
-            UseMnemonic = false
+            Font = new Font("Segoe UI", 17F, FontStyle.Bold),
+            ForeColor = TextWhite,
+            BackColor = Color.Transparent
         };
         _pnlClockCard.Controls.Add(_lblClockTime);
 
+        string tzName = TimeZoneInfo.Local.IsDaylightSavingTime(DateTime.Now) 
+            ? TimeZoneInfo.Local.DaylightName 
+            : TimeZoneInfo.Local.StandardName;
+        string tzAbbr = new string(tzName.Split(' ').Where(w => w.Length > 0).Select(w => w[0]).ToArray());
+        if (tzAbbr.Length > 4) tzAbbr = "Local";
+
         _lblClockDateUtc = new Label
         {
-            Text = $"{DateTime.Now:ddd, dd MMM yyyy}  •  {DateTime.UtcNow:HH:mm:ss} UTC",
-            Location = new Point(12, 58),
+            Text = $"{DateTime.Now:ddd, dd MMM yyyy}  ({tzAbbr})",
+            Location = new Point(14, 62),
             AutoSize = true,
-            Font = new Font("Segoe UI", 8.5F, FontStyle.Regular),
-            ForeColor = Color.FromArgb(71, 85, 105),
-            UseMnemonic = false
+            Font = new Font("Segoe UI", 8F, FontStyle.Regular),
+            ForeColor = TextDim,
+            BackColor = Color.Transparent
         };
         _pnlClockCard.Controls.Add(_lblClockDateUtc);
 
-        // --- Card 2: Precision & Health Card ---
-        _pnlSyncCard = CreateModernCard(294, cardY, cardW, cardH);
+        // --- Card 2: Precision & Accuracy ---
+        _pnlSyncCard = CreateModernGlassCard(290, cardY, cardW, cardH);
         Controls.Add(_pnlSyncCard);
 
         var lblSyncHeader = new Label
         {
-            Text = "CLOCK ACCURACY & STATUS",
-            Location = new Point(12, 10),
+            Text = "🎯  Time Accuracy",
+            Location = new Point(14, 10),
             AutoSize = true,
-            Font = new Font("Segoe UI", 7.5F, FontStyle.Bold),
-            ForeColor = Color.FromArgb(100, 116, 139),
-            UseMnemonic = false
+            Font = new Font("Segoe UI", 8F, FontStyle.Bold),
+            ForeColor = TextMuted,
+            BackColor = Color.Transparent
         };
         _pnlSyncCard.Controls.Add(lblSyncHeader);
 
         _lblSyncOffset = new Label
         {
-            Text = "Status: Initializing...",
-            Location = new Point(11, 28),
+            Text = "Synchronizing...",
+            Location = new Point(12, 28),
             AutoSize = true,
-            Font = new Font("Segoe UI", 12.5F, FontStyle.Bold),
-            ForeColor = Color.FromArgb(15, 23, 42),
-            UseMnemonic = false
+            Font = new Font("Segoe UI", 13.5F, FontStyle.Bold),
+            ForeColor = HealthGreen,
+            BackColor = Color.Transparent
         };
         _pnlSyncCard.Controls.Add(_lblSyncOffset);
 
         _lblSyncNextAndServer = new Label
         {
-            Text = "Next check: Calculating...",
-            Location = new Point(12, 58),
+            Text = "vs. NTP pool average",
+            Location = new Point(14, 62),
             AutoSize = true,
-            Font = new Font("Segoe UI", 8.5F, FontStyle.Regular),
-            ForeColor = Color.FromArgb(71, 85, 105),
-            UseMnemonic = false
+            Font = new Font("Segoe UI", 8F, FontStyle.Regular),
+            ForeColor = TextDim,
+            BackColor = Color.Transparent
         };
         _pnlSyncCard.Controls.Add(_lblSyncNextAndServer);
 
         // ==========================================
-        // 3. NTP SERVER POOL & LIVE METRICS TABLE
+        // 3. NTP SERVER POOL TABLE SECTION
         // ==========================================
-        int tableTopY = 152;
+        int tableTopY = 156;
         var pnlTableBar = new Panel
         {
-            Location = new Point(16, tableTopY),
-            Size = new Size(544, 22),
+            Location = new Point(18, tableTopY),
+            Size = new Size(532, 22),
             BackColor = Color.Transparent
         };
         Controls.Add(pnlTableBar);
 
         _lblTableTitle = new Label
         {
-            Text = "NTP Server Pool",
-            Location = new Point(0, 2),
+            Text = "🖧  NTP Server Pool",
+            Location = new Point(0, 0),
             AutoSize = true,
-            Font = new Font("Segoe UI", 9F, FontStyle.Bold),
-            ForeColor = Color.FromArgb(30, 41, 59)
+            Font = new Font("Segoe UI", 9.5F, FontStyle.Bold),
+            ForeColor = TextWhite
         };
         pnlTableBar.Controls.Add(_lblTableTitle);
 
         _lblTableSubtitle = new Label
         {
-            Text = "Concurrent SNTP queries  •  Double-click server to configure",
-            Location = new Point(180, 3),
-            Size = new Size(364, 18),
-            TextAlign = ContentAlignment.MiddleRight,
+            Text = "7 authoritative servers • 15m polling interval",
+            Location = new Point(270, 2),
+            Size = new Size(262, 18),
+            TextAlign = ContentAlignment.TopRight,
             Font = new Font("Segoe UI", 8F, FontStyle.Regular),
-            ForeColor = Color.FromArgb(100, 116, 139)
+            ForeColor = TextDim
         };
         pnlTableBar.Controls.Add(_lblTableSubtitle);
 
-        _lvServers = new ListView
-        {
-            Location = new Point(16, tableTopY + 22),
-            Size = new Size(544, 178),
-            View = View.Details,
-            FullRowSelect = true,
-            GridLines = false, // Clean whitespace rows instead of harsh spreadsheet grid lines
-            HeaderStyle = ColumnHeaderStyle.Nonclickable,
-            MultiSelect = false,
-            BorderStyle = BorderStyle.FixedSingle,
-            BackColor = Color.White,
-            Font = new Font("Segoe UI", 9F)
-        };
-        _lvServers.Columns.Add("Server Hostname", 175, HorizontalAlignment.Left);
-        _lvServers.Columns.Add("Stratum", 60, HorizontalAlignment.Center);
-        _lvServers.Columns.Add("Status", 75, HorizontalAlignment.Left);
-        _lvServers.Columns.Add("Round Trip", 75, HorizontalAlignment.Right);
-        _lvServers.Columns.Add("Offset", 75, HorizontalAlignment.Right);
-        _lvServers.Columns.Add("Response Note", 84, HorizontalAlignment.Left);
-        _lvServers.DoubleClick += (s, e) => OpenSettings();
-        Controls.Add(_lvServers);
+        // Server List Container
+        int listY = 182;
+        int listW = 532;
+        int listH = 264;
 
-        PopulateServersFromSharedConfigIfEmpty();
+        _pnlServerListContainer = new Panel
+        {
+            Location = new Point(18, listY),
+            Size = new Size(listW, listH),
+            BackColor = Color.FromArgb(13, 21, 39)
+        };
+        _pnlServerListContainer.Paint += (s, e) =>
+        {
+            using var pen = new Pen(CardBorderColor, 1f);
+            using var path = CreateRoundedRectPath(new Rectangle(0, 0, _pnlServerListContainer.Width - 1, _pnlServerListContainer.Height - 1), 6);
+            e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+            e.Graphics.DrawPath(pen, path);
+        };
+        Controls.Add(_pnlServerListContainer);
+
+        // Header inside list container
+        _pnlServerListHeader = new Panel
+        {
+            Location = new Point(1, 1),
+            Size = new Size(listW - 2, 26),
+            BackColor = Color.FromArgb(17, 27, 51)
+        };
+        _pnlServerListHeader.Paint += (s, e) =>
+        {
+            e.Graphics.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
+            using var font = new Font("Segoe UI", 8F, FontStyle.Bold);
+            using var brush = new SolidBrush(TextDim);
+            e.Graphics.DrawString("Server", font, brush, 16, 6);
+            e.Graphics.DrawString("Latency", font, brush, 350, 6);
+            e.Graphics.DrawString("Status", font, brush, 452, 6);
+
+            using var pen = new Pen(Color.FromArgb(24, 37, 66), 1f);
+            e.Graphics.DrawLine(pen, 0, 25, _pnlServerListHeader.Width, 25);
+        };
+        _pnlServerListContainer.Controls.Add(_pnlServerListHeader);
+
+        // Custom Owner-Drawn Server List
+        _serverList = new ServerListControl
+        {
+            Location = new Point(1, 28),
+            Size = new Size(listW - 2, listH - 30),
+            BackColor = Color.FromArgb(13, 21, 39)
+        };
+        _pnlServerListContainer.Controls.Add(_serverList);
 
         // ==========================================
-        // 4. BOTTOM ACTION & STATUS BAR
+        // 4. ACTION BAR & FOOTER
         // ==========================================
-        int bottomY = 360;
-        var pnlBottom = new Panel
-        {
-            Location = new Point(16, bottomY),
-            Size = new Size(544, 88),
-            BackColor = Color.Transparent
-        };
-        Controls.Add(pnlBottom);
+        int actionY = 456;
+        int btnH = 36;
 
+        // 1. Sync Button (Vibrant Cyan Gradient Pill)
+        _btnSyncNow = new Button
+        {
+            Text = "🔄  Sync",
+            Location = new Point(18, actionY),
+            Size = new Size(124, btnH),
+            FlatStyle = FlatStyle.Flat,
+            Font = new Font("Segoe UI", 9.5F, FontStyle.Bold),
+            Cursor = Cursors.Hand,
+            UseVisualStyleBackColor = false
+        };
+        _btnSyncNow.FlatAppearance.BorderSize = 0;
+        _btnSyncNow.Paint += DrawCyanGlowButton;
+        _btnSyncNow.Click += async (s, e) => await TriggerSyncNowAsync();
+        Controls.Add(_btnSyncNow);
+
+        // 2. Audit Log Button
+        _btnAuditLog = CreateModernGlassButton("📄  Log", 152, actionY, 120, btnH);
+        _btnAuditLog.Click += (s, e) => OpenAuditLog();
+        Controls.Add(_btnAuditLog);
+
+        // 3. Settings Button
+        _btnSettings = CreateModernGlassButton("⚙  Settings", 282, actionY, 126, btnH);
+        _btnSettings.Click += (s, e) => OpenSettings();
+        Controls.Add(_btnSettings);
+
+        // 4. About Button
+        _btnAbout = CreateModernGlassButton("ℹ  About", 418, actionY, 132, btnH);
+        _btnAbout.Click += (s, e) => OpenAbout();
+        Controls.Add(_btnAbout);
+
+        // Footer status labels
+        int footerY = 502;
         _lblStatusNote = new Label
         {
-            Text = "Ready. Time synchronized automatically with authoritative global servers.",
-            Location = new Point(0, 4),
-            Size = new Size(544, 18),
-            Font = new Font("Segoe UI", 8.5F),
-            ForeColor = Color.FromArgb(71, 85, 105)
+            Text = "Initializing background synchronization service...",
+            Location = new Point(20, footerY),
+            Size = new Size(530, 16),
+            Font = new Font("Segoe UI", 8F, FontStyle.Regular),
+            ForeColor = TextMuted,
+            AutoEllipsis = true
         };
-        pnlBottom.Controls.Add(_lblStatusNote);
+        Controls.Add(_lblStatusNote);
 
-        // Service indicator label on left
         _lblServiceStatus = new Label
         {
-            Text = "● Service: Running",
-            Location = new Point(0, 35),
-            AutoSize = true,
-            Font = new Font("Segoe UI", 8.5F, FontStyle.Regular),
-            ForeColor = Color.FromArgb(100, 116, 139)
+            Text = "● Service: Active  •  LAN NTP: Active",
+            Location = new Point(20, footerY + 18),
+            Size = new Size(530, 16),
+            Font = new Font("Segoe UI", 8F, FontStyle.Bold),
+            ForeColor = HealthGreen
         };
-        pnlBottom.Controls.Add(_lblServiceStatus);
+        Controls.Add(_lblServiceStatus);
 
-        // Cohesive Modern Action Buttons
-        int btnY = 28;
-        int btnH = 32;
-
-        _btnSyncNow = CreateModernPrimaryButton("⚡ Sync", 154, btnY, 86, btnH);
-        _btnSyncNow.Click += async (s, e) => await TriggerSyncNowAsync();
-        pnlBottom.Controls.Add(_btnSyncNow);
-
-        _btnAuditLog = CreateModernSecondaryButton("📊 Log", 246, btnY, 70, btnH);
-        _btnAuditLog.Click += (s, e) => OpenAuditLog();
-        pnlBottom.Controls.Add(_btnAuditLog);
-
-        _btnSettings = CreateModernSecondaryButton("Settings...", 322, btnY, 82, btnH);
-        _btnSettings.Click += (s, e) => OpenSettings();
-        pnlBottom.Controls.Add(_btnSettings);
-
-        _btnAbout = CreateModernSecondaryButton("About", 410, btnY, 62, btnH);
-        _btnAbout.Click += (s, e) => OpenAbout();
-        pnlBottom.Controls.Add(_btnAbout);
-
-        _btnClose = CreateModernSecondaryButton("Close", 478, btnY, 66, btnH);
-        _btnClose.Click += (s, e) => HandleClose();
-        pnlBottom.Controls.Add(_btnClose);
-
-        // --- Timers ---
+        // ==========================================
+        // 5. TIMERS & EVENT LISTENERS
+        // ==========================================
         _clockTimer = new System.Windows.Forms.Timer { Interval = 1000 };
         _clockTimer.Tick += ClockTimer_Tick;
         _clockTimer.Start();
 
-        _statusPollTimer = new System.Windows.Forms.Timer { Interval = 5000 };
+        _statusPollTimer = new System.Windows.Forms.Timer { Interval = 1500 };
         _statusPollTimer.Tick += async (s, e) => await RefreshStatusAsync();
-        _statusPollTimer.Start();
 
+        try
+        {
+            NetworkChange.NetworkAvailabilityChanged += (s, ev) =>
+            {
+                if (IsHandleCreated)
+                {
+                    BeginInvoke(new Action(() => { _ = RefreshStatusAsync(); }));
+                }
+            };
+        }
+        catch { }
+
+        _statusPollTimer.Start();
         _ = RefreshStatusAsync();
     }
 
-    private static Panel CreateModernCard(int x, int y, int width, int height)
+    protected override void OnHandleCreated(EventArgs e)
+    {
+        base.OnHandleCreated(e);
+        // Enable Windows 10 / 11 Native Immersive Dark Mode for Title Bar
+        try
+        {
+            if (OperatingSystem.IsWindowsVersionAtLeast(10, 0, 17763))
+            {
+                int darkMode = 1;
+                int res = DwmSetWindowAttribute(Handle, DWMWA_USE_IMMERSIVE_DARK_MODE, ref darkMode, sizeof(int));
+                if (res != 0)
+                {
+                    DwmSetWindowAttribute(Handle, 19, ref darkMode, sizeof(int));
+                }
+            }
+        }
+        catch { }
+    }
+
+    private static Panel CreateModernGlassCard(int x, int y, int width, int height)
     {
         var panel = new Panel
         {
             Location = new Point(x, y),
             Size = new Size(width, height),
-            BackColor = Color.White
+            BackColor = CardBgColor
         };
         panel.Paint += (s, e) =>
         {
-            using var pen = new Pen(Color.FromArgb(226, 232, 240), 1f);
-            e.Graphics.DrawRectangle(pen, 0, 0, panel.Width - 1, panel.Height - 1);
+            e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+            using var path = CreateRoundedRectPath(new Rectangle(0, 0, panel.Width - 1, panel.Height - 1), 8);
+            using var pen = new Pen(CardBorderColor, 1.2f);
+            e.Graphics.DrawPath(pen, path);
         };
         return panel;
     }
 
-    private static Button CreateModernPrimaryButton(string text, int x, int y, int width, int height)
+    private static Button CreateModernGlassButton(string text, int x, int y, int width, int height)
     {
         var btn = new Button
         {
             Text = text,
             Location = new Point(x, y),
             Size = new Size(width, height),
-            BackColor = Color.FromArgb(37, 99, 235), // Royal Blue
-            ForeColor = Color.White,
-            FlatStyle = FlatStyle.Flat,
-            Font = new Font("Segoe UI", 9F, FontStyle.Bold),
-            Cursor = Cursors.Hand,
-            UseVisualStyleBackColor = false
-        };
-        btn.FlatAppearance.BorderSize = 0;
-        btn.FlatAppearance.MouseOverBackColor = Color.FromArgb(29, 78, 216);
-        btn.FlatAppearance.MouseDownBackColor = Color.FromArgb(30, 64, 175);
-        return btn;
-    }
-
-    private static Button CreateModernSecondaryButton(string text, int x, int y, int width, int height)
-    {
-        var btn = new Button
-        {
-            Text = text,
-            Location = new Point(x, y),
-            Size = new Size(width, height),
-            BackColor = Color.White,
-            ForeColor = Color.FromArgb(51, 65, 85), // Slate-700
+            BackColor = Color.FromArgb(19, 31, 56),
+            ForeColor = Color.FromArgb(226, 232, 240),
             FlatStyle = FlatStyle.Flat,
             Font = new Font("Segoe UI", 9F, FontStyle.Regular),
             Cursor = Cursors.Hand,
             UseVisualStyleBackColor = false
         };
         btn.FlatAppearance.BorderSize = 1;
-        btn.FlatAppearance.BorderColor = Color.FromArgb(203, 213, 225); // Slate-300
-        btn.FlatAppearance.MouseOverBackColor = Color.FromArgb(241, 245, 249);
-        btn.FlatAppearance.MouseDownBackColor = Color.FromArgb(226, 232, 240);
+        btn.FlatAppearance.BorderColor = Color.FromArgb(34, 51, 86);
+        btn.FlatAppearance.MouseOverBackColor = Color.FromArgb(28, 45, 79);
+        btn.FlatAppearance.MouseDownBackColor = Color.FromArgb(14, 23, 43);
         return btn;
     }
 
-    private Color _healthBadgeBorderColor = Color.FromArgb(203, 213, 225);
+    private void DrawCyanGlowButton(object? sender, PaintEventArgs e)
+    {
+        var btn = (Button)sender!;
+        e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+        var rect = new Rectangle(0, 0, btn.Width, btn.Height);
 
-    private void DrawHealthBadgePill(object? sender, PaintEventArgs e)
+        using var brush = new LinearGradientBrush(rect, Color.FromArgb(0, 210, 255), Color.FromArgb(2, 132, 199), LinearGradientMode.Horizontal);
+        e.Graphics.FillRectangle(brush, rect);
+
+        TextRenderer.DrawText(e.Graphics, btn.Text, btn.Font, rect, Color.FromArgb(10, 25, 47),
+            TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+    }
+
+    private void DrawHealthBadgeContainer(object? sender, PaintEventArgs e)
     {
         e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
-        e.Graphics.PixelOffsetMode = PixelOffsetMode.HighQuality;
-        var rect = new Rectangle(0, 0, _lblHealthBadge.Width - 1, _lblHealthBadge.Height - 1);
-        int radius = 12;
+        var rect = new Rectangle(0, 0, _pnlHealthBadge.Width - 1, _pnlHealthBadge.Height - 1);
+        using var path = CreateRoundedRectPath(rect, 8);
+        using var brush = new SolidBrush(_pnlHealthBadge.BackColor);
+        e.Graphics.FillPath(brush, path);
 
-        using var path = new GraphicsPath();
+        Color borderColor = _pnlHealthBadge.BackColor == Color.FromArgb(63, 18, 18) ? HealthRed : HealthGreen;
+        using var pen = new Pen(borderColor, 1.2f);
+        e.Graphics.DrawPath(pen, path);
+    }
+
+    private static GraphicsPath CreateRoundedRectPath(Rectangle rect, int radius)
+    {
+        var path = new GraphicsPath();
         path.AddArc(rect.X, rect.Y, radius, radius, 180, 90);
         path.AddArc(rect.Right - radius, rect.Y, radius, radius, 270, 90);
         path.AddArc(rect.Right - radius, rect.Bottom - radius, radius, radius, 0, 90);
         path.AddArc(rect.X, rect.Bottom - radius, radius, radius, 90, 90);
         path.CloseFigure();
-
-        using var brush = new SolidBrush(_lblHealthBadge.BackColor);
-        e.Graphics.FillPath(brush, path);
-
-        using var pen = new Pen(_healthBadgeBorderColor, 1f);
-        e.Graphics.DrawPath(pen, path);
-
-        TextRenderer.DrawText(e.Graphics, _lblHealthBadge.Text, _lblHealthBadge.Font, rect, _lblHealthBadge.ForeColor,
-            TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.SingleLine);
+        return path;
     }
 
     private void ClockTimer_Tick(object? sender, EventArgs e)
     {
         _lblClockTime.Text = DateTime.Now.ToString("hh:mm:ss tt");
-        _lblClockDateUtc.Text = $"{DateTime.Now:ddd, dd MMM yyyy}  •  {DateTime.UtcNow:HH:mm:ss} UTC";
+
+        string tzName = TimeZoneInfo.Local.IsDaylightSavingTime(DateTime.Now) 
+            ? TimeZoneInfo.Local.DaylightName 
+            : TimeZoneInfo.Local.StandardName;
+        string tzAbbr = new string(tzName.Split(' ').Where(w => w.Length > 0).Select(w => w[0]).ToArray());
+        if (tzAbbr.Length > 4) tzAbbr = "Local";
+
+        _lblClockDateUtc.Text = $"{DateTime.Now:ddd, dd MMM yyyy}  ({tzAbbr})";
 
         bool networkAvail = NetworkInterface.GetIsNetworkAvailable();
         bool isNoInternet = !networkAvail || (_lastSnapshot != null && (!_lastSnapshot.NetworkOnline || (!_lastSnapshot.InSync && string.IsNullOrEmpty(_lastSnapshot.SelectedServer))));
@@ -482,21 +617,17 @@ public class MainForm : Form
                 _consecutiveFailures++;
                 if (_consecutiveFailures >= 3)
                 {
-                    SetHealthBadge("● Offline", Color.FromArgb(185, 28, 28), Color.FromArgb(254, 242, 242), Color.FromArgb(254, 202, 202));
+                    SetHealthBadge(false, "✖ Offline", "Service unreachable");
                     _lblStatusNote.Text = "TrueTime Service is offline or not reachable via Named Pipe.";
-                    _lblStatusNote.ForeColor = Color.FromArgb(185, 28, 28);
+                    _lblStatusNote.ForeColor = HealthRed;
                     _lblServiceStatus.Text = "● Service: Offline";
-                    _lblServiceStatus.ForeColor = Color.FromArgb(185, 28, 28);
+                    _lblServiceStatus.ForeColor = HealthRed;
                     _lblSyncOffset.Text = "Service Offline";
-                    _lblSyncOffset.ForeColor = Color.FromArgb(185, 28, 28);
-                    PopulateServersFromSharedConfigIfEmpty();
+                    _lblSyncOffset.ForeColor = HealthRed;
                 }
             }
         }
-        catch
-        {
-            // Suppress background poll glitches
-        }
+        catch { }
     }
 
     public async Task TriggerSyncNowAsync()
@@ -504,10 +635,10 @@ public class MainForm : Form
         if (_isUpdating) return;
         _isUpdating = true;
         _btnSyncNow.Enabled = false;
-        _btnSyncNow.Text = "Syncing...";
-        SetHealthBadge("⚡ Syncing...", Color.FromArgb(37, 99, 235), Color.FromArgb(239, 246, 255), Color.FromArgb(191, 219, 254));
+        _btnSyncNow.Text = "⚡ Syncing...";
+        SetHealthBadge(true, "⚡ Syncing...", "Querying NTP pool...");
         _lblStatusNote.Text = "Querying authoritative NTP servers concurrently over UDP 123...";
-        _lblStatusNote.ForeColor = Color.FromArgb(37, 99, 235);
+        _lblStatusNote.ForeColor = AccentCyan;
 
         try
         {
@@ -527,7 +658,7 @@ public class MainForm : Form
         {
             _isUpdating = false;
             _btnSyncNow.Enabled = true;
-            _btnSyncNow.Text = "⚡ Sync";
+            _btnSyncNow.Text = "🔄  Sync";
         }
     }
 
@@ -545,8 +676,7 @@ public class MainForm : Form
         if (isNoInternet)
         {
             _lblSyncOffset.Text = "No Internet Connection";
-            _lblSyncOffset.ForeColor = Color.FromArgb(220, 38, 38); // Red-600
-            SetHealthBadge("● No Internet", Color.FromArgb(220, 38, 38), Color.FromArgb(254, 242, 242), Color.FromArgb(254, 202, 202));
+            _lblSyncOffset.ForeColor = HealthRed;
 
             DateTime nextAttempt = snapshot.NextSyncTime != DateTime.MinValue
                 ? snapshot.NextSyncTime
@@ -556,17 +686,18 @@ public class MainForm : Form
                 ? (remaining.TotalMinutes >= 1 ? $"{(int)remaining.TotalMinutes}m {remaining.Seconds:D2}s" : $"{remaining.Seconds}s")
                 : "0s";
 
+            SetHealthBadge(false, "✖ No Internet", $"Retry in {timeStr}");
+
             _lblSyncNextAndServer.Text = remaining > TimeSpan.Zero
                 ? $"No internet. Trying again in {timeStr}..."
                 : "No internet. Retrying connection now...";
             _lblStatusNote.Text = remaining > TimeSpan.Zero
                 ? $"No internet connection. Retrying authoritative servers in {timeStr}..."
                 : "No internet. Retrying connection now...";
-            _lblStatusNote.ForeColor = Color.FromArgb(220, 38, 38);
+            _lblStatusNote.ForeColor = HealthRed;
         }
         else
         {
-            // Update Offset display in Sync Card
             string offsetText = $"{snapshot.OffsetMs:+0.0;-0.0;0.0} ms";
             string metricsText = "";
             if (snapshot.PoolJitterMs > 0 || Math.Abs(snapshot.CrystalPpm) > 0.01)
@@ -577,117 +708,65 @@ public class MainForm : Form
             if (snapshot.InSync && !string.IsNullOrEmpty(snapshot.SelectedServer) && Math.Abs(snapshot.OffsetMs) <= snapshot.ThresholdMilliseconds)
             {
                 _lblSyncOffset.Text = $"Accurate ({offsetText})";
-                _lblSyncOffset.ForeColor = Color.FromArgb(5, 150, 105); // Emerald-600
-                SetHealthBadge("● In Sync", Color.FromArgb(5, 150, 105), Color.FromArgb(236, 253, 245), Color.FromArgb(167, 243, 208));
+                _lblSyncOffset.ForeColor = HealthGreen;
+                string syncTimeStr = snapshot.LastSyncTime != DateTime.MinValue ? snapshot.LastSyncTime.ToString("h:mm:ss tt") : "Just now";
+                SetHealthBadge(true, "✔ In Sync", $"Last sync: {syncTimeStr}");
                 _lblStatusNote.Text = $"System clock accurate within {snapshot.ThresholdMilliseconds} ms via {snapshot.SelectedServer}.{metricsText}";
-                _lblStatusNote.ForeColor = Color.FromArgb(5, 150, 105);
+                _lblStatusNote.ForeColor = HealthGreen;
             }
             else
             {
                 _lblSyncOffset.Text = $"Drift: {offsetText}";
-                _lblSyncOffset.ForeColor = Color.FromArgb(217, 119, 6); // Amber-600
-                SetHealthBadge("● Drift Detected", Color.FromArgb(217, 119, 6), Color.FromArgb(255, 251, 235), Color.FromArgb(253, 230, 138));
+                _lblSyncOffset.ForeColor = HealthAmber;
+                SetHealthBadge(false, "● Drift Detected", $"Offset: {offsetText}");
                 _lblStatusNote.Text = $"Time drift of {offsetText} detected. Adjusting clock...{metricsText}";
-                _lblStatusNote.ForeColor = Color.FromArgb(217, 119, 6);
+                _lblStatusNote.ForeColor = HealthAmber;
             }
         }
 
         string lanNtpStatus = snapshot.LocalNtpServerRunning ? "  •  LAN NTP: Active" : "";
         _lblServiceStatus.Text = $"● Service: Active{lanNtpStatus}";
-        _lblServiceStatus.ForeColor = Color.FromArgb(5, 150, 105);
+        _lblServiceStatus.ForeColor = HealthGreen;
 
-        // Server Table Population
-        _lvServers.BeginUpdate();
-        _lvServers.Items.Clear();
-
-        if (snapshot.Servers != null)
+        if (snapshot.ConfiguredServers != null && snapshot.ConfiguredServers.Count > 0)
         {
-            foreach (var s in snapshot.Servers)
-            {
-                var lvi = new ListViewItem(s.Server);
-                bool isFastest = string.Equals(s.Server, snapshot.SelectedServer, StringComparison.OrdinalIgnoreCase);
-
-                if (s.Success)
-                {
-                    lvi.SubItems.Add(s.Stratum > 0 ? $"Stratum {s.Stratum}" : "—");
-                    lvi.SubItems.Add(isFastest ? "★ Active" : "Online");
-                    lvi.SubItems.Add($"{s.RoundTripMs:F1} ms");
-                    lvi.SubItems.Add($"{s.OffsetMs:+0.0;-0.0;0.0} ms");
-                    lvi.SubItems.Add(isFastest ? "Fastest source" : "Responding");
-
-                    if (isFastest)
-                    {
-                        lvi.Font = new Font(_lvServers.Font, FontStyle.Bold);
-                        lvi.ForeColor = Color.FromArgb(5, 150, 105); // Emerald-600
-                    }
-                    else
-                    {
-                        lvi.ForeColor = Color.FromArgb(30, 41, 59);
-                    }
-                }
-                else
-                {
-                    lvi.SubItems.Add("—");
-                    lvi.SubItems.Add(s.Enabled ? (isNoInternet ? "Offline" : "Timeout") : "Disabled");
-                    lvi.SubItems.Add("—");
-                    lvi.SubItems.Add("—");
-                    lvi.SubItems.Add(s.Error ?? (s.Enabled ? (isNoInternet ? "No Internet connection" : "Timed out") : "Disabled"));
-                    lvi.ForeColor = isNoInternet && s.Enabled ? Color.FromArgb(220, 38, 38) : Color.FromArgb(148, 163, 184);
-                }
-
-                _lvServers.Items.Add(lvi);
-            }
+            _lblTableSubtitle.Text = $"{snapshot.ConfiguredServers.Count} servers • {snapshot.PollIntervalMinutes}m polling interval";
         }
 
-        _lvServers.EndUpdate();
+        // Update Server List Control with brand logos
+        _serverList.SetServers(snapshot.Servers, snapshot.SelectedServer, isNoInternet);
     }
 
-    private void SetHealthBadge(string text, Color foreColor, Color backColor, Color borderColor)
+    private void SetHealthBadge(bool ok, string mainText, string subText)
     {
-        _lblHealthBadge.Text = text;
-        _lblHealthBadge.ForeColor = foreColor;
-        _lblHealthBadge.BackColor = backColor;
-        _healthBadgeBorderColor = borderColor;
-        _lblHealthBadge.Invalidate();
-    }
+        _lblHealthBadgeMain.Text = mainText;
+        _lblHealthBadgeSub.Text = subText;
 
-    private void PopulateServersFromSharedConfigIfEmpty()
-    {
-        if (_lvServers.Items.Count > 0) return;
-
-        try
+        if (mainText.Contains("Syncing"))
         {
-            string path = SettingsForm.GetSharedConfigPath();
-            if (File.Exists(path))
-            {
-                string json = File.ReadAllText(path);
-                var config = System.Text.Json.JsonSerializer.Deserialize<AppConfigPayload>(json, new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-                if (config?.Servers != null && config.Servers.Count > 0)
-                {
-                    _lvServers.BeginUpdate();
-                    _lvServers.Items.Clear();
-                    foreach (var s in config.Servers)
-                    {
-                        var lvi = new ListViewItem(s.Hostname);
-                        lvi.SubItems.Add("—");
-                        lvi.SubItems.Add(s.Enabled ? "Configured" : "Disabled");
-                        lvi.SubItems.Add("—");
-                        lvi.SubItems.Add("—");
-                        lvi.SubItems.Add(s.Enabled ? "Ready to sync" : "Disabled");
-                        lvi.ForeColor = Color.FromArgb(100, 116, 139);
-                        _lvServers.Items.Add(lvi);
-                    }
-                    _lvServers.EndUpdate();
-                }
-            }
+            _pnlHealthBadge.BackColor = Color.FromArgb(12, 35, 64);
+            _lblHealthBadgeMain.ForeColor = AccentCyan;
+            _lblHealthBadgeSub.ForeColor = Color.FromArgb(186, 230, 253);
         }
-        catch { }
-    }
-
-    public void OpenAuditLog()
-    {
-        using var form = new AuditLogForm(Icon, _lastSnapshot?.History);
-        form.ShowDialog(this);
+        else if (ok)
+        {
+            _pnlHealthBadge.BackColor = Color.FromArgb(4, 47, 46);
+            _lblHealthBadgeMain.ForeColor = HealthGreen;
+            _lblHealthBadgeSub.ForeColor = Color.FromArgb(110, 231, 183);
+        }
+        else if (mainText.Contains("Drift"))
+        {
+            _pnlHealthBadge.BackColor = Color.FromArgb(59, 35, 8);
+            _lblHealthBadgeMain.ForeColor = HealthAmber;
+            _lblHealthBadgeSub.ForeColor = Color.FromArgb(253, 230, 138);
+        }
+        else
+        {
+            _pnlHealthBadge.BackColor = Color.FromArgb(63, 18, 18);
+            _lblHealthBadgeMain.ForeColor = HealthRed;
+            _lblHealthBadgeSub.ForeColor = Color.FromArgb(254, 202, 202);
+        }
+        _pnlHealthBadge.Invalidate();
     }
 
     public void OpenSettings()
@@ -699,6 +778,12 @@ public class MainForm : Form
             _showBalloons = form.ShowBalloons;
             _ = RefreshStatusAsync();
         }
+    }
+
+    public void OpenAuditLog()
+    {
+        using var form = new AuditLogForm(Icon, _lastSnapshot?.History);
+        form.ShowDialog(this);
     }
 
     public void OpenAbout()
@@ -736,13 +821,135 @@ public class MainForm : Form
 
     protected override void OnFormClosing(FormClosingEventArgs e)
     {
-        if (!_allowExit && _minimizeOnClose && e.CloseReason == CloseReason.UserClosing)
+        if (!_allowExit && e.CloseReason == CloseReason.UserClosing && _minimizeOnClose)
         {
             e.Cancel = true;
             Hide();
             return;
         }
-
         base.OnFormClosing(e);
+    }
+}
+
+/// <summary>
+/// Custom owner-drawn server pool list with server brand logos, 2-line title/hostname, latency, and status dots.
+/// </summary>
+public class ServerListControl : UserControl
+{
+    private readonly List<ServerSyncDetail> _servers = new();
+    private string? _selectedServer;
+    private bool _isNoInternet;
+
+    public ServerListControl()
+    {
+        SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint | ControlStyles.OptimizedDoubleBuffer, true);
+        DoubleBuffered = true;
+        AutoScroll = true;
+    }
+
+    public void SetServers(List<ServerSyncDetail>? servers, string? selectedServer, bool isNoInternet)
+    {
+        _servers.Clear();
+        if (servers != null)
+        {
+            _servers.AddRange(servers);
+        }
+        _selectedServer = selectedServer;
+        _isNoInternet = isNoInternet;
+
+        int rowH = 44;
+        AutoScrollMinSize = new Size(0, _servers.Count * rowH);
+        Invalidate();
+    }
+
+    protected override void OnPaint(PaintEventArgs e)
+    {
+        base.OnPaint(e);
+        e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+        e.Graphics.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
+
+        int rowH = 44;
+        int startY = AutoScrollPosition.Y;
+
+        using var fontBrand = new Font("Segoe UI", 9F, FontStyle.Bold);
+        using var fontHost = new Font("Segoe UI", 7.5F, FontStyle.Regular);
+        using var fontMetrics = new Font("Segoe UI", 8.5F, FontStyle.Regular);
+        using var fontStatus = new Font("Segoe UI", 8F, FontStyle.Bold);
+
+        using var brushWhite = new SolidBrush(Color.FromArgb(248, 250, 252));
+        using var brushMuted = new SolidBrush(Color.FromArgb(148, 163, 184));
+        using var brushGreen = new SolidBrush(Color.FromArgb(16, 185, 129));
+        using var brushCyan = new SolidBrush(Color.FromArgb(0, 210, 255));
+        using var brushRed = new SolidBrush(Color.FromArgb(239, 68, 68));
+        using var brushDisabled = new SolidBrush(Color.FromArgb(100, 116, 139));
+        using var penSeparator = new Pen(Color.FromArgb(21, 32, 57), 1f);
+
+        for (int i = 0; i < _servers.Count; i++)
+        {
+            var s = _servers[i];
+            int y = startY + (i * rowH);
+            if (y + rowH < 0 || y > Height) continue;
+
+            bool isFastest = string.Equals(s.Server, _selectedServer, StringComparison.OrdinalIgnoreCase);
+
+            // Subtle row background highlight for fastest active server
+            if (isFastest)
+            {
+                using var activeBrush = new SolidBrush(Color.FromArgb(18, 30, 58));
+                e.Graphics.FillRectangle(activeBrush, 0, y, Width, rowH);
+
+                using var activeBar = new SolidBrush(Color.FromArgb(0, 210, 255));
+                e.Graphics.FillRectangle(activeBar, 0, y, 3, rowH);
+            }
+
+            // 1. Logo
+            var logo = LogoProvider.GetLogo(s.Server);
+            if (logo != null)
+            {
+                e.Graphics.DrawImage(logo, 16, y + 10, 24, 24);
+            }
+            else
+            {
+                using var phBrush = new SolidBrush(Color.FromArgb(28, 43, 76));
+                e.Graphics.FillEllipse(phBrush, 16, y + 10, 24, 24);
+            }
+
+            // 2. Server Display Info (Brand Name + Hostname)
+            var (brand, host) = LogoProvider.GetServerDisplayInfo(s.Server);
+            e.Graphics.DrawString(brand, fontBrand, isFastest ? brushCyan : brushWhite, 48, y + 6);
+            e.Graphics.DrawString(host, fontHost, brushMuted, 48, y + 23);
+
+            // 3. Latency
+            string latencyText = s.Success ? $"{s.RoundTripMs:F1} ms" : "—";
+            e.Graphics.DrawString(latencyText, fontMetrics, brushWhite, 350, y + 12);
+
+            // 4. Status Dot + Label
+            if (s.Success)
+            {
+                if (isFastest)
+                {
+                    e.Graphics.FillEllipse(brushCyan, 452, y + 17, 7, 7);
+                    e.Graphics.DrawString("Active", fontStatus, brushCyan, 464, y + 12);
+                }
+                else
+                {
+                    e.Graphics.FillEllipse(brushGreen, 452, y + 17, 7, 7);
+                    e.Graphics.DrawString("Online", fontStatus, brushGreen, 464, y + 12);
+                }
+            }
+            else if (!s.Enabled)
+            {
+                e.Graphics.FillEllipse(brushDisabled, 452, y + 17, 7, 7);
+                e.Graphics.DrawString("Disabled", fontStatus, brushDisabled, 464, y + 12);
+            }
+            else
+            {
+                e.Graphics.FillEllipse(brushRed, 452, y + 17, 7, 7);
+                e.Graphics.DrawString(_isNoInternet ? "Offline" : "Timeout", fontStatus, brushRed, 464, y + 12);
+            }
+
+            // Separator Line
+            e.Graphics.DrawLine(penSeparator, 16, y + rowH - 1, Width - 16, y + rowH - 1);
+        }
     }
 }

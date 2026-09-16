@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text.Json;
 using System.Threading.Tasks;
 using System.Windows.Forms;
@@ -13,6 +14,10 @@ namespace NetTime.Tray;
 
 public class SettingsForm : Form
 {
+    [DllImport("dwmapi.dll")]
+    private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int attrValue, int attrSize);
+    private const int DWMWA_USE_IMMERSIVE_DARK_MODE = 20;
+
     private static readonly string[] DefaultServers = new[]
     {
         "time.cloudflare.com",
@@ -73,7 +78,8 @@ public class SettingsForm : Form
         MinimizeBox = false;
         ShowInTaskbar = false;
         Font = new Font("Segoe UI", 9F);
-        BackColor = Color.FromArgb(248, 250, 252); // Modern slate-50
+        BackColor = Color.FromArgb(11, 18, 34); // #0B1222
+        ForeColor = Color.FromArgb(248, 250, 252);
 
         if (appIcon != null)
         {
@@ -86,8 +92,9 @@ public class SettingsForm : Form
             Text = "NTP Server Pool (Customizable)",
             Location = new Point(14, 12),
             Size = new Size(466, 235),
-            Font = new Font("Segoe UI", 9F, FontStyle.Regular),
-            BackColor = Color.White
+            Font = new Font("Segoe UI", 9F, FontStyle.Bold),
+            ForeColor = Color.FromArgb(0, 210, 255),
+            BackColor = Color.FromArgb(17, 27, 51)
         };
         Controls.Add(grpServers);
 
@@ -97,7 +104,10 @@ public class SettingsForm : Form
             Size = new Size(330, 130),
             CheckOnClick = true,
             IntegralHeight = false,
-            BorderStyle = BorderStyle.FixedSingle
+            BorderStyle = BorderStyle.FixedSingle,
+            BackColor = Color.FromArgb(11, 18, 34),
+            ForeColor = Color.FromArgb(241, 245, 249),
+            Font = new Font("Segoe UI", 9F, FontStyle.Regular)
         };
         _clbServers.DoubleClick += (s, e) => EditSelectedServer();
         grpServers.Controls.Add(_clbServers);
@@ -136,7 +146,9 @@ public class SettingsForm : Form
         {
             Text = "New Server:",
             Location = new Point(14, 166),
-            AutoSize = true
+            AutoSize = true,
+            Font = new Font("Segoe UI", 9F, FontStyle.Regular),
+            ForeColor = Color.FromArgb(226, 232, 240)
         };
         grpServers.Controls.Add(lblAdd);
 
@@ -144,7 +156,9 @@ public class SettingsForm : Form
         {
             Location = new Point(94, 163),
             Size = new Size(250, 23),
-            BorderStyle = BorderStyle.FixedSingle
+            BorderStyle = BorderStyle.FixedSingle,
+            BackColor = Color.FromArgb(11, 18, 34),
+            ForeColor = Color.FromArgb(241, 245, 249)
         };
         _txtNewServer.KeyDown += (s, e) =>
         {
@@ -165,7 +179,8 @@ public class SettingsForm : Form
             Text = "Select a server and click 'Test Ping' or double-click to edit.",
             Location = new Point(14, 198),
             Size = new Size(438, 26),
-            ForeColor = Color.FromArgb(100, 116, 139)
+            Font = new Font("Segoe UI", 8.5F, FontStyle.Regular),
+            ForeColor = Color.FromArgb(148, 163, 184)
         };
         grpServers.Controls.Add(_lblTestResult);
 
@@ -175,7 +190,9 @@ public class SettingsForm : Form
             Text = "Synchronization Schedule && Sensitivity",
             Location = new Point(14, 255),
             Size = new Size(466, 95),
-            BackColor = Color.White
+            Font = new Font("Segoe UI", 9F, FontStyle.Bold),
+            ForeColor = Color.FromArgb(0, 210, 255),
+            BackColor = Color.FromArgb(17, 27, 51)
         };
         Controls.Add(grpSync);
 
@@ -183,7 +200,9 @@ public class SettingsForm : Form
         {
             Text = "Poll Interval:",
             Location = new Point(14, 28),
-            AutoSize = true
+            AutoSize = true,
+            Font = new Font("Segoe UI", 9F, FontStyle.Regular),
+            ForeColor = Color.FromArgb(226, 232, 240)
         };
         grpSync.Controls.Add(lblInterval);
 
@@ -191,7 +210,10 @@ public class SettingsForm : Form
         {
             Location = new Point(106, 25),
             Size = new Size(130, 23),
-            DropDownStyle = ComboBoxStyle.DropDownList
+            DropDownStyle = ComboBoxStyle.DropDownList,
+            BackColor = Color.FromArgb(11, 18, 34),
+            ForeColor = Color.FromArgb(241, 245, 249),
+            FlatStyle = FlatStyle.Flat
         };
         _cmbInterval.Items.AddRange(new object[]
         {
@@ -208,7 +230,9 @@ public class SettingsForm : Form
         {
             Text = "Adjust clock if drift exceeds:",
             Location = new Point(14, 60),
-            AutoSize = true
+            AutoSize = true,
+            Font = new Font("Segoe UI", 9F, FontStyle.Regular),
+            ForeColor = Color.FromArgb(226, 232, 240)
         };
         grpSync.Controls.Add(lblThreshold);
 
@@ -216,7 +240,10 @@ public class SettingsForm : Form
         {
             Location = new Point(195, 57),
             Size = new Size(125, 23),
-            DropDownStyle = ComboBoxStyle.DropDownList
+            DropDownStyle = ComboBoxStyle.DropDownList,
+            BackColor = Color.FromArgb(11, 18, 34),
+            ForeColor = Color.FromArgb(241, 245, 249),
+            FlatStyle = FlatStyle.Flat
         };
         _cmbThreshold.Items.AddRange(new object[]
         {
@@ -235,7 +262,9 @@ public class SettingsForm : Form
             Text = "Preferences && Advanced Features",
             Location = new Point(14, 358),
             Size = new Size(466, 122),
-            BackColor = Color.White
+            Font = new Font("Segoe UI", 9F, FontStyle.Bold),
+            ForeColor = Color.FromArgb(0, 210, 255),
+            BackColor = Color.FromArgb(17, 27, 51)
         };
         Controls.Add(grpOptions);
 
@@ -243,7 +272,9 @@ public class SettingsForm : Form
         {
             Text = "Start TrueTime Tray with Windows",
             Location = new Point(16, 20),
-            AutoSize = true
+            AutoSize = true,
+            Font = new Font("Segoe UI", 9F, FontStyle.Regular),
+            ForeColor = Color.FromArgb(226, 232, 240)
         };
         grpOptions.Controls.Add(_chkStartWithWindows);
 
@@ -252,7 +283,9 @@ public class SettingsForm : Form
             Text = "Minimize to notification area (tray) on close",
             Location = new Point(16, 44),
             AutoSize = true,
-            Checked = minimizeOnClose
+            Checked = minimizeOnClose,
+            Font = new Font("Segoe UI", 9F, FontStyle.Regular),
+            ForeColor = Color.FromArgb(226, 232, 240)
         };
         grpOptions.Controls.Add(_chkMinimizeOnClose);
 
@@ -261,7 +294,9 @@ public class SettingsForm : Form
             Text = "Show notification balloon when clock is adjusted",
             Location = new Point(16, 68),
             AutoSize = true,
-            Checked = showBalloons
+            Checked = showBalloons,
+            Font = new Font("Segoe UI", 9F, FontStyle.Regular),
+            ForeColor = Color.FromArgb(226, 232, 240)
         };
         grpOptions.Controls.Add(_chkShowBalloons);
 
@@ -269,7 +304,9 @@ public class SettingsForm : Form
         {
             Text = "Enable Local LAN NTP Server (Broadcast Stratum-2 time on UDP 123)",
             Location = new Point(16, 92),
-            AutoSize = true
+            AutoSize = true,
+            Font = new Font("Segoe UI", 9F, FontStyle.Regular),
+            ForeColor = Color.FromArgb(226, 232, 240)
         };
         grpOptions.Controls.Add(_chkEnableLocalNtpServer);
 
@@ -605,6 +642,17 @@ public class SettingsForm : Form
         }
         catch { }
     }
+    protected override void OnHandleCreated(EventArgs e)
+    {
+        base.OnHandleCreated(e);
+        try
+        {
+            int darkMode = 1;
+            DwmSetWindowAttribute(Handle, DWMWA_USE_IMMERSIVE_DARK_MODE, ref darkMode, sizeof(int));
+        }
+        catch { }
+    }
+
     private static Button CreateModernSecondaryButton(string text, int x, int y, int width, int height)
     {
         var btn = new Button
@@ -612,17 +660,17 @@ public class SettingsForm : Form
             Text = text,
             Location = new Point(x, y),
             Size = new Size(width, height),
-            BackColor = Color.White,
-            ForeColor = Color.FromArgb(51, 65, 85),
+            BackColor = Color.FromArgb(21, 32, 56),
+            ForeColor = Color.FromArgb(241, 245, 249),
             FlatStyle = FlatStyle.Flat,
             Font = new Font("Segoe UI", 9F, FontStyle.Regular),
             Cursor = Cursors.Hand,
             UseVisualStyleBackColor = false
         };
         btn.FlatAppearance.BorderSize = 1;
-        btn.FlatAppearance.BorderColor = Color.FromArgb(203, 213, 225);
-        btn.FlatAppearance.MouseOverBackColor = Color.FromArgb(241, 245, 249);
-        btn.FlatAppearance.MouseDownBackColor = Color.FromArgb(226, 232, 240);
+        btn.FlatAppearance.BorderColor = Color.FromArgb(45, 60, 95);
+        btn.FlatAppearance.MouseOverBackColor = Color.FromArgb(30, 45, 80);
+        btn.FlatAppearance.MouseDownBackColor = Color.FromArgb(18, 28, 50);
         return btn;
     }
 
@@ -633,7 +681,7 @@ public class SettingsForm : Form
             Text = text,
             Location = new Point(x, y),
             Size = new Size(width, height),
-            BackColor = Color.FromArgb(37, 99, 235),
+            BackColor = Color.FromArgb(14, 165, 233),
             ForeColor = Color.White,
             FlatStyle = FlatStyle.Flat,
             Font = new Font("Segoe UI", 9F, FontStyle.Bold),
@@ -641,14 +689,17 @@ public class SettingsForm : Form
             UseVisualStyleBackColor = false
         };
         btn.FlatAppearance.BorderSize = 0;
-        btn.FlatAppearance.MouseOverBackColor = Color.FromArgb(29, 78, 216);
-        btn.FlatAppearance.MouseDownBackColor = Color.FromArgb(30, 64, 175);
+        btn.FlatAppearance.MouseOverBackColor = Color.FromArgb(2, 132, 199);
+        btn.FlatAppearance.MouseDownBackColor = Color.FromArgb(3, 105, 161);
         return btn;
     }
 }
 
 internal static class PromptDialog
 {
+    [DllImport("dwmapi.dll")]
+    private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int attrValue, int attrSize);
+
     public static string? Show(string title, string prompt, string initialValue, Form parent)
     {
         using var form = new Form
@@ -661,14 +712,23 @@ internal static class PromptDialog
             MinimizeBox = false,
             ShowInTaskbar = false,
             Font = new Font("Segoe UI", 9F),
-            BackColor = Color.FromArgb(248, 250, 252)
+            BackColor = Color.FromArgb(11, 18, 34),
+            ForeColor = Color.FromArgb(248, 250, 252)
         };
+
+        try
+        {
+            int darkMode = 1;
+            DwmSetWindowAttribute(form.Handle, 20, ref darkMode, sizeof(int));
+        }
+        catch { }
 
         var lbl = new Label
         {
             Text = prompt,
             Location = new Point(16, 16),
-            Size = new Size(330, 20)
+            Size = new Size(330, 20),
+            ForeColor = Color.FromArgb(226, 232, 240)
         };
         form.Controls.Add(lbl);
 
@@ -677,7 +737,9 @@ internal static class PromptDialog
             Text = initialValue,
             Location = new Point(16, 42),
             Size = new Size(330, 23),
-            BorderStyle = BorderStyle.FixedSingle
+            BorderStyle = BorderStyle.FixedSingle,
+            BackColor = Color.FromArgb(21, 32, 56),
+            ForeColor = Color.FromArgb(241, 245, 249)
         };
         form.Controls.Add(txt);
 
@@ -685,20 +747,31 @@ internal static class PromptDialog
         {
             Text = "OK",
             Location = new Point(180, 80),
-            Size = new Size(80, 26),
+            Size = new Size(80, 28),
             DialogResult = DialogResult.OK,
-            UseVisualStyleBackColor = true
+            BackColor = Color.FromArgb(14, 165, 233),
+            ForeColor = Color.White,
+            FlatStyle = FlatStyle.Flat,
+            Font = new Font("Segoe UI", 9F, FontStyle.Bold),
+            UseVisualStyleBackColor = false
         };
+        btnOk.FlatAppearance.BorderSize = 0;
         form.Controls.Add(btnOk);
 
         var btnCancel = new Button
         {
             Text = "Cancel",
             Location = new Point(266, 80),
-            Size = new Size(80, 26),
+            Size = new Size(80, 28),
             DialogResult = DialogResult.Cancel,
-            UseVisualStyleBackColor = true
+            BackColor = Color.FromArgb(21, 32, 56),
+            ForeColor = Color.FromArgb(241, 245, 249),
+            FlatStyle = FlatStyle.Flat,
+            Font = new Font("Segoe UI", 9F, FontStyle.Regular),
+            UseVisualStyleBackColor = false
         };
+        btnCancel.FlatAppearance.BorderSize = 1;
+        btnCancel.FlatAppearance.BorderColor = Color.FromArgb(45, 60, 95);
         form.Controls.Add(btnCancel);
 
         form.AcceptButton = btnOk;

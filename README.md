@@ -1,14 +1,27 @@
-# ⏱️ TrueTime Professional
-### Precision Multi-Server NTP Synchronization Engine & Modern System Tray Dashboard for Windows
+<p align="center">
+  <img src="assets/banner.png" alt="TrueTime Professional Banner" width="100%" />
+</p>
 
-[![Release](https://img.shields.io/badge/release-v1.0.0-2563EB.svg?style=for-the-badge&logo=github)](https://github.com/Tabish955/TrueTime/releases)
-[![Platform](https://img.shields.io/badge/platform-Windows%20x64-0078D6.svg?style=for-the-badge&logo=windows)](https://github.com/Tabish955/TrueTime)
-[![Runtime](https://img.shields.io/badge/.NET-8.0%20LTS-512BD4.svg?style=for-the-badge&logo=dotnet)](https://dotnet.microsoft.com/)
-[![Protocol](https://img.shields.io/badge/protocol-RFC%205905%20NTP%20%2F%20SNTP-059669.svg?style=for-the-badge)](https://www.ntp.org/)
-[![License](https://img.shields.io/badge/license-MIT-059669.svg?style=for-the-badge)](LICENSE)
-[![Security](https://img.shields.io/badge/security-VirusTotal%20Clean-10B981.svg?style=for-the-badge&logo=virustotal)](https://www.virustotal.com/)
+<p align="center">
+  <img src="assets/logo.png" alt="TrueTime Professional Logo" width="96" height="96" />
+</p>
 
-**TrueTime Professional** is an ultra-reliable, microsecond-accurate Network Time Protocol (NTP/SNTP) synchronization suite for modern Windows environments. Engineered as an enterprise-grade replacement for legacy utilities like NetTime, TrueTime combines a resilient Windows background service with a sleek Windows 11 Fluent system tray dashboard.
+<h1 align="center">TrueTime Professional</h1>
+
+<p align="center">
+  <strong>Next-Generation Multi-Server NTP Precision Synchronization Suite & Glassmorphic Dashboard for Windows</strong>
+</p>
+
+<p align="center">
+  <a href="https://github.com/Tabish955/TrueTime/releases"><img src="https://img.shields.io/badge/release-v1.0.0-00D2FF.svg?style=for-the-badge&logo=github" alt="Release" /></a>
+  <a href="https://github.com/Tabish955/TrueTime"><img src="https://img.shields.io/badge/platform-Windows%20x64-0078D6.svg?style=for-the-badge&logo=windows" alt="Platform" /></a>
+  <a href="https://dotnet.microsoft.com/"><img src="https://img.shields.io/badge/.NET-8.0%20LTS-512BD4.svg?style=for-the-badge&logo=dotnet" alt="Runtime" /></a>
+  <a href="https://www.ntp.org/"><img src="https://img.shields.io/badge/protocol-RFC%205905%20NTP-059669.svg?style=for-the-badge" alt="Protocol" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-059669.svg?style=for-the-badge" alt="License" /></a>
+  <a href="https://www.virustotal.com/"><img src="https://img.shields.io/badge/security-VirusTotal%20Clean-10B981.svg?style=for-the-badge&logo=virustotal" alt="Security" /></a>
+</p>
+
+**TrueTime Professional** is an ultra-reliable, microsecond-accurate Network Time Protocol (NTP/SNTP) synchronization suite for modern Windows environments. Engineered as a high-performance replacement for legacy utilities like NetTime, TrueTime combines a resilient Windows background service with a sleek dark obsidian glassmorphic system tray dashboard featuring real-time brand logos for authoritative time providers.
 
 [Download Latest Release](https://github.com/Tabish955/TrueTime/releases) • [Features](#-key-features) • [Comparison](#-comparison-with-alternatives) • [Architecture](#-architecture) • [Deployment](#-enterprise-deployment--silent-installation)
 
@@ -16,17 +29,25 @@
 
 ## 🌟 Key Features
 
+### 🎨 Dark Obsidian Glassmorphic Dashboard & Branded NTP Providers
+- **Ultra-Modern Dark Obsidian Theme**: Engineered with deep obsidian panels (`#0B1222` / `#111B33`), glowing cyan accents (`#00D2FF`), and native Windows 10/11 DWM Immersive Dark Mode title bars.
+- **Authoritative Provider Logos**: Integrated high-resolution brand logos for major global NTP infrastructure:
+  - 🌐 **Cloudflare** (`time.cloudflare.com`)
+  - 🔍 **Google Public NTP** (`time.google.com`)
+  - 👥 **Meta / Facebook** (`time.facebook.com`)
+  - 🍎 **Apple Time** (`time.apple.com`)
+  - 🪟 **Microsoft Windows Time** (`time.windows.com`)
+  - ⚛️ **NIST Boulder Atomic Clocks** (`time.nist.gov`)
+  - 🏊 **NTP Pool Project** (`pool.ntp.org`)
+- **Dual Precision Metric Cards**: Real-time system clock monitor alongside high-precision synchronization offset indicators (`Accurate (+0.0 ms)`).
+- **Color-Coded Status Badges**: Real-time visual status pills (`✔ In Sync`, `✖ No Internet`, `⚡ Drift Detected`, `🔄 Syncing...`, `⚠ Service Offline`).
+
 ### 💎 Next-Generation Diagnostics & Precision
 - **Motherboard Crystal Oscillator Drift (PPM)**: Calculates your motherboard hardware Real-Time Clock (RTC) crystal frequency deviation in **Parts Per Million (PPM)** between sync intervals.
 - **Statistical Pool Jitter Measurement**: Computes the true Root-Mean-Square (RMS) dispersion and standard deviation across all responding NTP stratum servers in real-time.
 - **Concurrent Multi-Server Polling**: Queries your entire authoritative NTP pool simultaneously over asynchronous UDP 123 sockets, dynamically locking onto the lowest-latency, lowest-dispersion time source.
 - **Integrated Local LAN NTP Daemon**: Acts as an authoritative stratum time server for your entire local subnet, industrial equipment, PLC controllers, and virtual machines without requiring internet access.
-- **Active Network-Awareness**: Actively monitors Windows network adapter states (`NetworkChange.NetworkAvailabilityChanged`). If internet connectivity drops, TrueTime immediately reflects offline status—eliminating deceptive false "In Sync" readings—and counts down live second-by-second until the next automated retry.
-
-### 🎨 Windows 11 Fluent System Tray Dashboard
-- **Dual Precision Cards**: Displays live local system time vs True UTC time alongside real-time clock offset in milliseconds.
-- **Visual Health Badges**: Instant color-coded indicators: `● In Sync` (Emerald), `● Drift Detected` (Amber), `● No Internet` (Red), `● Syncing...` (Blue), or `● Service Offline` (Dark Red).
-- **Stratum & Server Pool Inspector**: Detailed table displaying round-trip delay (RTT), calculated clock offset, Stratum level, response status, and active server tagging.
+- **Active Network-Awareness with Live Countdown**: Actively monitors Windows network adapter states (`NetworkChange.NetworkAvailabilityChanged`). If internet connectivity drops, TrueTime immediately reflects offline status—eliminating deceptive false "In Sync" readings—and counts down live second-by-second until the next automated retry.
 - **Single-Instance Window Activation**: Clicking the desktop shortcut or tray icon activates and brings the existing dashboard window to the foreground via UIPI-safe Windows messaging (`WM_SHOW_TRUETIME`).
 - **Audit Logging & One-Click CSV Export**: Comprehensive event history tracking sync timestamps, offsets, latencies, and adjust actions with instant CSV export for regulatory and compliance audits.
 
@@ -86,16 +107,16 @@ Release binaries are published under [GitHub Releases](https://github.com/Tabish
 
 | Package | Format | Architecture | Size | Description |
 | :--- | :---: | :---: | :---: | :--- |
-| **[TrueTimeSetup.msi](https://github.com/Tabish955/TrueTime/releases/latest/download/TrueTimeSetup.msi)** | MSI | Windows x64 | ~1.3 MB | Native WiX 5 Windows Installer. Automatically registers the Windows Service, configures auto-start, and installs shortcuts. Ideal for enterprise GPO / Intune deployments. |
-| **[TrueTimeSetup.exe](https://github.com/Tabish955/TrueTime/releases/latest/download/TrueTimeSetup.exe)** | EXE | Windows x64 | ~2.8 MB | Interactive Inno Setup wizard. Automatically starts service and launches tray application immediately upon installation completion. |
-| **[TrueTime-v1.0.0-Portable.zip](https://github.com/Tabish955/TrueTime/releases/latest/download/TrueTime-v1.0.0-Portable.zip)** | ZIP | Windows x64 | ~909 KB | Standalone portable archive. Includes one-click `install.bat` and `uninstall.bat` scripts for flash drives and air-gapped systems. |
+| **[TrueTimeSetup.msi](https://github.com/Tabish955/TrueTime/releases/latest/download/TrueTimeSetup.msi)** | MSI | Windows x64 | ~1.4 MB | Native WiX 5 Windows Installer. Automatically registers the Windows Service, configures auto-start, and installs shortcuts. Ideal for enterprise GPO / Intune deployments. |
+| **[TrueTimeSetup.exe](https://github.com/Tabish955/TrueTime/releases/latest/download/TrueTimeSetup.exe)** | EXE | Windows x64 | ~3.0 MB | Interactive Inno Setup wizard. Automatically starts service and launches tray application immediately upon installation completion. |
+| **[TrueTime-v1.0.0-Portable.zip](https://github.com/Tabish955/TrueTime/releases/latest/download/TrueTime-v1.0.0-Portable.zip)** | ZIP | Windows x64 | ~1.0 MB | Standalone portable archive. Includes one-click `install.bat` and `uninstall.bat` scripts for flash drives and air-gapped systems. |
 
 ### 🔒 Cryptographic Verification (SHA-256 Checksums)
 
 ```text
-75593446B9B7B1992D65046C349B1D6C997446429D3D97436D24E40CDE3CC399  TrueTimeSetup.msi
-4455880046A86CF2283CC378B28FBC7DC08192A0C9955432C3DD229840178BF3  TrueTimeSetup.exe
-D5EB2A07667C898E37A196D98D59781DB6B1C90BBDDB16A3749B252F602D1459  TrueTime-v1.0.0-Portable.zip
+A58B8BF78376F33F0BC94E71F35BB7DE0792C4FC55F845B90867DC7DE4E19FAA  TrueTimeSetup.msi
+EC7A3598A5314D3D574E1CDD87801646CC6244717094378C9121ECDCCDF363FF  TrueTimeSetup.exe
+47A9C42905D6D64EDD0B33AAE130A85630B3799969946739353323933190DBD7  TrueTime-v1.0.0-Portable.zip
 ```
 
 ---
