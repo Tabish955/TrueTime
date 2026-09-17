@@ -34,19 +34,27 @@ internal static class Program
     {
         if (args.Length > 0 && args[0] == "--screenshot")
         {
-            Application.EnableVisualStyles();
-            Application.SetCompatibleTextRenderingDefault(false);
-            using var scNotifyIcon = new NotifyIcon { Icon = CreateClockIcon() };
-            var scMainForm = new MainForm(scNotifyIcon);
-            scMainForm.Show();
-            Application.DoEvents();
-            using (var bmp = new Bitmap(scMainForm.Width, scMainForm.Height))
+            try
             {
-                scMainForm.DrawToBitmap(bmp, new Rectangle(0, 0, scMainForm.Width, scMainForm.Height));
-                string outPath = args.Length > 1 ? args[1] : "screenshot_main.png";
-                bmp.Save(outPath, System.Drawing.Imaging.ImageFormat.Png);
+                Application.EnableVisualStyles();
+                Application.SetCompatibleTextRenderingDefault(false);
+                using var scNotifyIcon = new NotifyIcon { Icon = CreateClockIcon() };
+                var scMainForm = new MainForm(scNotifyIcon);
+                scMainForm.Show();
+                Application.DoEvents();
+                using (var bmp = new Bitmap(scMainForm.Width, scMainForm.Height))
+                {
+                    scMainForm.DrawToBitmap(bmp, new Rectangle(0, 0, scMainForm.Width, scMainForm.Height));
+                    string outPath = args.Length > 1 ? args[1] : Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "screenshot_main.png");
+                    bmp.Save(outPath, System.Drawing.Imaging.ImageFormat.Png);
+                    File.WriteAllText(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "screenshot_done.txt"), "Saved to: " + outPath);
+                }
+                scMainForm.Close();
             }
-            scMainForm.Close();
+            catch (Exception ex)
+            {
+                File.WriteAllText(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "screenshot_error.txt"), ex.ToString());
+            }
             return;
         }
 
@@ -65,6 +73,24 @@ internal static class Program
                 bmp.Save(outPath, System.Drawing.Imaging.ImageFormat.Png);
             }
             scSettings.Close();
+            return;
+        }
+
+        if (args.Length > 0 && args[0] == "--screenshot-diag")
+        {
+            Application.EnableVisualStyles();
+            Application.SetCompatibleTextRenderingDefault(false);
+            using var scNotifyIcon = new NotifyIcon { Icon = CreateClockIcon() };
+            var scDiag = new DiagnosticsForm(scNotifyIcon.Icon);
+            scDiag.Show();
+            Application.DoEvents();
+            using (var bmp = new Bitmap(scDiag.Width, scDiag.Height))
+            {
+                scDiag.DrawToBitmap(bmp, new Rectangle(0, 0, scDiag.Width, scDiag.Height));
+                string outPath = args.Length > 1 ? args[1] : "screenshot_diag.png";
+                bmp.Save(outPath, System.Drawing.Imaging.ImageFormat.Png);
+            }
+            scDiag.Close();
             return;
         }
 
@@ -120,6 +146,15 @@ internal static class Program
             ShowDashboard(mainForm);
             mainForm.OpenSettings();
         });
+        var itemBenchmark = new ToolStripMenuItem("⚡ Run Benchmark", null, async (s, e) =>
+        {
+            ShowDashboard(mainForm);
+            await mainForm.RunServerBenchmarkAsync();
+        });
+        var itemDiagnostics = new ToolStripMenuItem("🩺 System Diagnostics...", null, (s, e) =>
+        {
+            mainForm.OpenDiagnostics();
+        });
         var itemAbout = new ToolStripMenuItem("About", null, (s, e) =>
         {
             mainForm.OpenAbout();
@@ -133,6 +168,8 @@ internal static class Program
 
         contextMenu.Items.Add(itemOpen);
         contextMenu.Items.Add(itemSync);
+        contextMenu.Items.Add(itemBenchmark);
+        contextMenu.Items.Add(itemDiagnostics);
         contextMenu.Items.Add(itemSettings);
         contextMenu.Items.Add(new ToolStripSeparator());
         contextMenu.Items.Add(itemAbout);

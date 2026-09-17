@@ -155,6 +155,13 @@ public class NamedPipeServer : BackgroundService
             string json = JsonSerializer.Serialize(testResult, JsonOptions);
             await writer.WriteLineAsync(json.AsMemory(), stoppingToken);
         }
+        else if (raw.Equals("BENCHMARK", StringComparison.OrdinalIgnoreCase))
+        {
+            _logger.LogInformation("Received BENCHMARK request from client");
+            var benchmarkResults = await _coordinator.BenchmarkServersAsync(stoppingToken);
+            string json = JsonSerializer.Serialize(benchmarkResults, JsonOptions);
+            await writer.WriteLineAsync(json.AsMemory(), stoppingToken);
+        }
         else
         {
             // "STATUS" or default fallback

@@ -49,6 +49,23 @@ public class PipeClient
         }
     }
 
+    public static async Task<List<ServerSyncDetail>?> RunBenchmarkAsync(CancellationToken cancellationToken = default)
+    {
+        string? raw = await SendRawCommandAsync("BENCHMARK", 8000, cancellationToken);
+        if (!string.IsNullOrWhiteSpace(raw))
+        {
+            try
+            {
+                return JsonSerializer.Deserialize<List<ServerSyncDetail>>(raw, JsonOptions);
+            }
+            catch
+            {
+                return null;
+            }
+        }
+        return null;
+    }
+
     public static async Task<TimeSyncSnapshot?> SendCommandAsync(string command, int timeoutMs = 5000, CancellationToken cancellationToken = default)
     {
         string? responseLine = await SendRawCommandAsync(command, timeoutMs, cancellationToken);

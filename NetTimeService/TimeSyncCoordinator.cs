@@ -243,6 +243,29 @@ public class TimeSyncCoordinator : ITimeSyncCoordinator
         };
     }
 
+    public async Task<List<ServerSyncDetail>> BenchmarkServersAsync(CancellationToken cancellationToken = default)
+    {
+        _logger.LogInformation("Executing high-speed concurrent server benchmark");
+        List<string> hosts;
+        lock (_serverEntries)
+        {
+            hosts = _serverEntries.Where(s => s.Enabled).Select(s => s.Hostname).ToList();
+        }
+
+        if (hosts.Count == 0)
+        {
+            hosts = SntpClient.DefaultNtpServers.ToList();
+        }
+
+        var tasks = hosts.Select(h => TestSingleServerAsync(h, cancellationToken)).ToArray();
+        var results = await Task.WhenAll(tasks);
+
+        return results
+            .OrderByDescending(r => r.Success)
+            .ThenBy(r => r.RoundTripMs)
+            .ToList();
+    }
+
     public async Task<TimeSyncSnapshot> UpdateConfigAsync(AppConfigPayload newConfig, CancellationToken cancellationToken = default)
     {
         _logger.LogInformation("Applying updated configuration via IPC: {Count} servers, {Interval}m poll, {Threshold}ms threshold, LAN NTP: {Lan}",

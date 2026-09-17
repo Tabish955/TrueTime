@@ -43,6 +43,8 @@ public class MainForm : Form
     // Server Table
     private readonly Label _lblTableTitle;
     private readonly Label _lblTableSubtitle;
+    private readonly Button _btnBenchmark;
+    private readonly Button _btnDoctor;
     private readonly Panel _pnlServerListContainer;
     private readonly Panel _pnlServerListHeader;
     private readonly ServerListControl _serverList;
@@ -276,7 +278,7 @@ public class MainForm : Form
         var pnlTableBar = new Panel
         {
             Location = new Point(18, tableTopY),
-            Size = new Size(532, 22),
+            Size = new Size(532, 24),
             BackColor = Color.Transparent
         };
         Controls.Add(pnlTableBar);
@@ -284,23 +286,30 @@ public class MainForm : Form
         _lblTableTitle = new Label
         {
             Text = "🖧  NTP Server Pool",
-            Location = new Point(0, 0),
+            Location = new Point(0, 3),
             AutoSize = true,
-            Font = new Font("Segoe UI", 9.5F, FontStyle.Bold),
+            Font = new Font("Segoe UI", 9F, FontStyle.Bold),
             ForeColor = TextWhite
         };
         pnlTableBar.Controls.Add(_lblTableTitle);
 
         _lblTableSubtitle = new Label
         {
-            Text = "7 authoritative servers • 15m polling interval",
-            Location = new Point(270, 2),
-            Size = new Size(262, 18),
-            TextAlign = ContentAlignment.TopRight,
+            Text = "7 servers • 15m poll",
+            Location = new Point(135, 4),
+            Size = new Size(160, 18),
             Font = new Font("Segoe UI", 8F, FontStyle.Regular),
             ForeColor = TextDim
         };
         pnlTableBar.Controls.Add(_lblTableSubtitle);
+
+        _btnBenchmark = CreateCompactBadgeButton("⚡ Benchmark", 316, 0, 108, 24, AccentCyan);
+        _btnBenchmark.Click += async (s, e) => await RunServerBenchmarkAsync();
+        pnlTableBar.Controls.Add(_btnBenchmark);
+
+        _btnDoctor = CreateCompactBadgeButton("✚ Doctor", 430, 0, 102, 24, HealthGreen);
+        _btnDoctor.Click += (s, e) => OpenDiagnostics();
+        pnlTableBar.Controls.Add(_btnDoctor);
 
         // Server List Container
         int listY = 182;
@@ -520,6 +529,38 @@ public class MainForm : Form
 
         TextRenderer.DrawText(e.Graphics, btn.Text, btn.Font, rect, Color.FromArgb(10, 25, 47),
             TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+    }
+
+    private static Button CreateCompactBadgeButton(string text, int x, int y, int w, int h, Color accentColor)
+    {
+        var btn = new Button
+        {
+            Text = text,
+            Location = new Point(x, y),
+            Size = new Size(w, h),
+            FlatStyle = FlatStyle.Flat,
+            Font = new Font("Segoe UI", 8F, FontStyle.Bold),
+            Cursor = Cursors.Hand,
+            UseVisualStyleBackColor = false,
+            ForeColor = TextWhite
+        };
+        btn.FlatAppearance.BorderSize = 0;
+        btn.Paint += (s, e) =>
+        {
+            e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+            e.Graphics.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
+            var rect = new Rectangle(0, 0, btn.Width, btn.Height);
+            using var path = CreateRoundedRectPath(new Rectangle(0, 0, btn.Width - 1, btn.Height - 1), 4);
+            using var bgBrush = new SolidBrush(Color.FromArgb(20, 31, 57));
+            e.Graphics.FillPath(bgBrush, path);
+            using var pen = new Pen(accentColor, 1f);
+            e.Graphics.DrawPath(pen, path);
+
+            var sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
+            using var textBrush = new SolidBrush(TextWhite);
+            e.Graphics.DrawString(btn.Text, btn.Font, textBrush, rect, sf);
+        };
+        return btn;
     }
 
     private void DrawHealthBadgeContainer(object? sender, PaintEventArgs e)
@@ -805,6 +846,52 @@ public class MainForm : Form
         form.ShowDialog(this);
     }
 
+    public void OpenDiagnostics()
+    {
+        using var form = new DiagnosticsForm(Icon);
+        form.ShowDialog(this);
+    }
+
+    public async Task RunServerBenchmarkAsync()
+    {
+        if (_isUpdating) return;
+        _btnBenchmark.Enabled = false;
+        _btnBenchmark.Text = "⏳ Testing...";
+        _lblStatusNote.Text = "Benchmarking all authoritative NTP servers concurrently over UDP 123...";
+        _lblStatusNote.ForeColor = AccentCyan;
+
+        try
+        {
+            var results = await PipeClient.RunBenchmarkAsync();
+            if (results != null && results.Count > 0)
+            {
+                var fastest = results.FirstOrDefault(r => r.Success);
+                string bestServer = fastest?.Server ?? "time.cloudflare.com";
+                double bestMs = fastest?.RoundTripMs ?? 0;
+
+                _serverList.SetServers(results, bestServer, false);
+                _lblStatusNote.Text = $"⚡ Benchmark Complete: {bestServer} is fastest ({bestMs:F1} ms)!";
+                _lblStatusNote.ForeColor = HealthGreen;
+            }
+            else
+            {
+                await TriggerSyncNowAsync();
+                _lblStatusNote.Text = "⚡ Benchmark and sync query complete.";
+                _lblStatusNote.ForeColor = HealthGreen;
+            }
+        }
+        catch (Exception ex)
+        {
+            _lblStatusNote.Text = $"Benchmark note: {ex.Message}";
+            _lblStatusNote.ForeColor = HealthAmber;
+        }
+        finally
+        {
+            _btnBenchmark.Enabled = true;
+            _btnBenchmark.Text = "⚡ Benchmark";
+        }
+    }
+
     private void HandleClose()
     {
         if (_minimizeOnClose)
@@ -880,6 +967,8 @@ public class ServerListControl : UserControl
     {
         base.OnPaint(e);
         e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+        e.Graphics.InterpolationMode = InterpolationMode.HighQualityBicubic;
+        e.Graphics.PixelOffsetMode = PixelOffsetMode.HighQuality;
         e.Graphics.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
 
         int rowH = 35;

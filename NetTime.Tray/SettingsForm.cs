@@ -41,6 +41,8 @@ public class SettingsForm : Form
     private readonly Button _btnDown;
     private readonly Button _btnTest;
     private readonly Button _btnDefaults;
+    private readonly Button _btnOptimize;
+    private readonly Button _btnDoctor;
     private readonly Label _lblTestResult;
 
     private readonly ComboBox _cmbInterval;
@@ -71,7 +73,7 @@ public class SettingsForm : Form
     public SettingsForm(Icon? appIcon, TimeSyncSnapshot? snapshot, bool minimizeOnClose, bool showBalloons)
     {
         Text = "TrueTime Configuration";
-        Size = new Size(510, 580);
+        ClientSize = new Size(494, 580);
         StartPosition = FormStartPosition.CenterParent;
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = false;
@@ -91,7 +93,7 @@ public class SettingsForm : Form
         {
             Text = "NTP Server Pool (Customizable)",
             Location = new Point(14, 12),
-            Size = new Size(466, 235),
+            Size = new Size(466, 258),
             Font = new Font("Segoe UI", 9F, FontStyle.Bold),
             ForeColor = Color.FromArgb(0, 210, 255),
             BackColor = Color.FromArgb(17, 27, 51)
@@ -133,19 +135,27 @@ public class SettingsForm : Form
         _btnDown.Click += (s, e) => MoveSelectedServerDown();
         grpServers.Controls.Add(_btnDown);
 
-        _btnTest = CreateModernSecondaryButton("Test Ping", btnX, 108, btnW, btnH);
+        _btnTest = CreateModernSecondaryButton("Test", btnX, 108, 48, btnH);
         _btnTest.Click += async (s, e) => await TestSelectedServerAsync();
         grpServers.Controls.Add(_btnTest);
 
-        _btnDefaults = CreateModernSecondaryButton("Defaults", btnX, 136, btnW, btnH);
+        _btnDefaults = CreateModernSecondaryButton("Reset", btnX + 52, 108, 48, btnH);
         _btnDefaults.Click += (s, e) => ResetToDefaults();
         grpServers.Controls.Add(_btnDefaults);
+
+        _btnOptimize = CreateModernSecondaryButton("⚡ Optimize", btnX, 136, btnW, btnH);
+        _btnOptimize.Click += async (s, e) => await OptimizeServersAsync();
+        grpServers.Controls.Add(_btnOptimize);
+
+        _btnDoctor = CreateModernSecondaryButton("✚ Doctor", btnX, 164, btnW, btnH);
+        _btnDoctor.Click += (s, e) => new DiagnosticsForm(Icon).ShowDialog(this);
+        grpServers.Controls.Add(_btnDoctor);
 
         // Add server row
         var lblAdd = new Label
         {
             Text = "New Server:",
-            Location = new Point(14, 166),
+            Location = new Point(14, 196),
             AutoSize = true,
             Font = new Font("Segoe UI", 9F, FontStyle.Regular),
             ForeColor = Color.FromArgb(226, 232, 240)
@@ -154,7 +164,7 @@ public class SettingsForm : Form
 
         _txtNewServer = new TextBox
         {
-            Location = new Point(94, 163),
+            Location = new Point(94, 194),
             Size = new Size(250, 23),
             BorderStyle = BorderStyle.FixedSingle,
             BackColor = Color.FromArgb(11, 18, 34),
@@ -170,15 +180,15 @@ public class SettingsForm : Form
         };
         grpServers.Controls.Add(_txtNewServer);
 
-        _btnAdd = CreateModernSecondaryButton("+ Add", btnX, 162, btnW, btnH);
+        _btnAdd = CreateModernSecondaryButton("+ Add", btnX, 193, btnW, btnH);
         _btnAdd.Click += (s, e) => AddServer();
         grpServers.Controls.Add(_btnAdd);
 
         _lblTestResult = new Label
         {
             Text = "Select a server and click 'Test Ping' or double-click to edit.",
-            Location = new Point(14, 198),
-            Size = new Size(438, 26),
+            Location = new Point(14, 224),
+            Size = new Size(438, 22),
             Font = new Font("Segoe UI", 8.5F, FontStyle.Regular),
             ForeColor = Color.FromArgb(148, 163, 184)
         };
@@ -188,7 +198,7 @@ public class SettingsForm : Form
         var grpSync = new GroupBox
         {
             Text = "Synchronization Schedule && Sensitivity",
-            Location = new Point(14, 255),
+            Location = new Point(14, 288),
             Size = new Size(466, 95),
             Font = new Font("Segoe UI", 9F, FontStyle.Bold),
             ForeColor = Color.FromArgb(0, 210, 255),
@@ -260,7 +270,7 @@ public class SettingsForm : Form
         var grpOptions = new GroupBox
         {
             Text = "Preferences && Advanced Features",
-            Location = new Point(14, 358),
+            Location = new Point(14, 395),
             Size = new Size(466, 122),
             Font = new Font("Segoe UI", 9F, FontStyle.Bold),
             ForeColor = Color.FromArgb(0, 210, 255),
@@ -311,7 +321,7 @@ public class SettingsForm : Form
         grpOptions.Controls.Add(_chkEnableLocalNtpServer);
 
         // --- Bottom Action Buttons (OK acts as Apply & Save, Cancel discards) ---
-        _btnOk = CreateModernPrimaryButton("OK", 286, 492, 94, 32);
+        _btnOk = CreateModernPrimaryButton("OK", 286, 532, 94, 34);
         _btnOk.Click += async (s, e) =>
         {
             _btnOk.Enabled = false;
@@ -326,7 +336,7 @@ public class SettingsForm : Form
         };
         Controls.Add(_btnOk);
 
-        _btnCancel = CreateModernSecondaryButton("Cancel", 388, 492, 92, 32);
+        _btnCancel = CreateModernSecondaryButton("Cancel", 388, 532, 92, 34);
         _btnCancel.DialogResult = DialogResult.Cancel;
         _btnCancel.Click += (s, e) => Close();
         Controls.Add(_btnCancel);
@@ -554,6 +564,58 @@ public class SettingsForm : Form
         finally
         {
             _btnTest.Enabled = true;
+        }
+    }
+
+    private async Task OptimizeServersAsync()
+    {
+        _btnOptimize.Enabled = false;
+        _lblTestResult.Text = "Benchmarking all servers concurrently over UDP 123...";
+        _lblTestResult.ForeColor = Color.FromArgb(0, 210, 255);
+
+        try
+        {
+            var results = await PipeClient.RunBenchmarkAsync();
+            if (results != null && results.Count > 0)
+            {
+                var checkedServers = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                for (int i = 0; i < _clbServers.Items.Count; i++)
+                {
+                    if (_clbServers.GetItemChecked(i))
+                    {
+                        string? host = _clbServers.Items[i]?.ToString();
+                        if (!string.IsNullOrWhiteSpace(host))
+                        {
+                            checkedServers.Add(host);
+                        }
+                    }
+                }
+
+                _clbServers.Items.Clear();
+                foreach (var r in results)
+                {
+                    int idx = _clbServers.Items.Add(r.Server);
+                    _clbServers.SetItemChecked(idx, checkedServers.Contains(r.Server) || r.Success);
+                }
+
+                var fastest = results.FirstOrDefault(r => r.Success);
+                _lblTestResult.Text = $"⚡ Auto-Optimized! {fastest?.Server} is fastest ({fastest?.RoundTripMs:F1} ms). List sorted.";
+                _lblTestResult.ForeColor = Color.FromArgb(16, 185, 129);
+            }
+            else
+            {
+                _lblTestResult.Text = "Benchmark completed. No latency changes detected.";
+                _lblTestResult.ForeColor = Color.FromArgb(148, 163, 184);
+            }
+        }
+        catch (Exception ex)
+        {
+            _lblTestResult.Text = $"Optimize error: {ex.Message}";
+            _lblTestResult.ForeColor = Color.FromArgb(239, 68, 68);
+        }
+        finally
+        {
+            _btnOptimize.Enabled = true;
         }
     }
 

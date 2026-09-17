@@ -21,17 +21,49 @@
   <a href="https://www.virustotal.com/"><img src="https://img.shields.io/badge/security-VirusTotal%20Clean-10B981.svg?style=for-the-badge&logo=virustotal" alt="Security" /></a>
 </p>
 
-**TrueTime Professional** is an ultra-reliable, microsecond-accurate Network Time Protocol (NTP/SNTP) synchronization suite for modern Windows environments. Engineered as a high-performance replacement for legacy utilities like NetTime, TrueTime combines a resilient Windows background service with a sleek dark obsidian glassmorphic system tray dashboard featuring real-time brand logos for authoritative time providers.
+**TrueTime Professional** is an enterprise-grade, microsecond-accurate Network Time Protocol (NTP/SNTP) synchronization suite for modern Windows environments. Engineered as an ultra-high performance replacement for legacy utilities like NetTime and Dimension 4, TrueTime pairs a resilient Session 0 background service with a sleek dark obsidian glassmorphic system tray dashboard featuring authentic pixel-perfect brand logos for global time providers.
 
-[Download Latest Release](https://github.com/Tabish955/TrueTime/releases) • [Features](#-key-features) • [Comparison](#-comparison-with-alternatives) • [Architecture](#-architecture) • [Deployment](#-enterprise-deployment--silent-installation)
+<p align="center">
+  <img src="assets/dashboard.png" alt="TrueTime Dashboard" width="480" />
+</p>
+
+[Download Latest Release](https://github.com/Tabish955/TrueTime/releases) • [Key Features](#-key-features) • [Comparison](#-comparison-with-alternatives) • [Diagnostics & Doctor](#-self-healing-diagnostics-doctor) • [Architecture](#-architecture) • [Deployment](#-enterprise-deployment--silent-installation)
 
 ---
 
-## 🌟 Key Features
+## 📦 Official Release Downloads (v1.0.0)
 
-### 🎨 Dark Obsidian Glassmorphic Dashboard & Branded NTP Providers
-- **Ultra-Modern Dark Obsidian Theme**: Engineered with deep obsidian panels (`#0B1222` / `#111B33`), glowing cyan accents (`#00D2FF`), and native Windows 10/11 DWM Immersive Dark Mode title bars.
-- **Authoritative Provider Logos**: Integrated high-resolution brand logos for major global NTP infrastructure:
+| Package | Format | File Size | Target Audience | Direct Download | SHA-256 Checksum |
+| :--- | :---: | :---: | :--- | :---: | :--- |
+| **Enterprise MSI Installer** | `.msi` | **1.47 MB** | Enterprise, Active Directory GPO, Microsoft Intune | [Download MSI](https://github.com/Tabish955/TrueTime/releases/download/v1.0.0/TrueTimeSetup.msi) | `B5283F5898063EF98E1F661E3CC0F6F689AAA4B6B6061BA680F390CDF8DD819B` |
+| **Standard Setup Executable** | `.exe` | **3.00 MB** | Desktop users, standard 1-click wizard setup | [Download EXE](https://github.com/Tabish955/TrueTime/releases/download/v1.0.0/TrueTimeSetup.exe) | `4AB3474BE206BB92527C185BA5F8F7EE189E5AA64E944A0B8A55E25EC77544BE` |
+| **Portable Zero-Install ZIP** | `.zip` | **1.03 MB** | Portable USB drives, air-gapped test rigs, DevOps | [Download ZIP](https://github.com/Tabish955/TrueTime/releases/download/v1.0.0/TrueTime-v1.0.0-Portable.zip) | `3286EB1A96D51915462A6BF3CEB7D92A5E887F4A133CDE587F68148F7AFC367F` |
+
+---
+
+## 🌟 Key Features (What Makes TrueTime Stand Out)
+
+### ⚡ 1. Concurrent Multi-Server Speed Benchmark & Auto-Optimizer
+- **Parallel UDP 123 Latency Ping**: Unlike legacy tools that poll servers sequentially, TrueTime can benchmark your entire NTP pool in parallel in under 300 milliseconds.
+- **Smart Auto-Optimization**: Automatically ranks and sorts time servers by round-trip response latency (RTT), jitter, and stratum hierarchy.
+- **1-Click Priority Route**: Re-orders your authoritative time sources so the lowest-latency server is queried first with zero packet loss.
+
+### 🩺 2. Self-Healing Diagnostics Doctor & Port Conflict Shield
+- **Automated Health Check**: Continuously probes 5 critical operational points:
+  1. Session 0 Windows Service state
+  2. UDP Port 123 socket binding availability
+  3. Windows Time (`w32time`) service competition conflict
+  4. Authoritative DNS domain resolution
+  5. Windows Firewall UDP 123 inbound/outbound rules
+- **1-Click Auto-Repair**: Automatically neutralizes `w32time` conflicts, configures Windows Firewall rules, and restarts services with a single click.
+
+<p align="center">
+  <img src="assets/diagnostics.png" alt="TrueTime Diagnostics Doctor" width="440" />
+</p>
+
+### 🎨 3. Dark Obsidian Glassmorphic Dashboard & Authentic Brand Vectors
+- **Sleek Obsidian Visual Design**: Engineered with dark obsidian glass panels (`#0B1222` / `#111B33`), glowing cyan accents (`#00D2FF`), and native Windows 10/11 DWM Immersive Dark Mode title bars.
+- **Official Brand Logos**: High-resolution vector-rendered marks for global authoritative time providers:
   - 🌐 **Cloudflare** (`time.cloudflare.com`)
   - 🔍 **Google Public NTP** (`time.google.com`)
   - 👥 **Meta / Facebook** (`time.facebook.com`)
@@ -39,100 +71,80 @@
   - 🪟 **Microsoft Windows Time** (`time.windows.com`)
   - ⚛️ **NIST Boulder Atomic Clocks** (`time.nist.gov`)
   - 🏊 **NTP Pool Project** (`pool.ntp.org`)
-- **Dual Precision Metric Cards**: Real-time system clock monitor alongside high-precision synchronization offset indicators (`Accurate (+0.0 ms)`).
-- **Color-Coded Status Badges**: Real-time visual status pills (`✔ In Sync`, `✖ No Internet`, `⚡ Drift Detected`, `🔄 Syncing...`, `⚠ Service Offline`).
 
-### 💎 Next-Generation Diagnostics & Precision
-- **Motherboard Crystal Oscillator Drift (PPM)**: Calculates your motherboard hardware Real-Time Clock (RTC) crystal frequency deviation in **Parts Per Million (PPM)** between sync intervals.
-- **Statistical Pool Jitter Measurement**: Computes the true Root-Mean-Square (RMS) dispersion and standard deviation across all responding NTP stratum servers in real-time.
-- **Concurrent Multi-Server Polling**: Queries your entire authoritative NTP pool simultaneously over asynchronous UDP 123 sockets, dynamically locking onto the lowest-latency, lowest-dispersion time source.
-- **Integrated Local LAN NTP Daemon**: Acts as an authoritative stratum time server for your entire local subnet, industrial equipment, PLC controllers, and virtual machines without requiring internet access.
-- **Active Network-Awareness with Live Countdown**: Actively monitors Windows network adapter states (`NetworkChange.NetworkAvailabilityChanged`). If internet connectivity drops, TrueTime immediately reflects offline status—eliminating deceptive false "In Sync" readings—and counts down live second-by-second until the next automated retry.
-- **Single-Instance Window Activation**: Clicking the desktop shortcut or tray icon activates and brings the existing dashboard window to the foreground via UIPI-safe Windows messaging (`WM_SHOW_TRUETIME`).
-- **Audit Logging & One-Click CSV Export**: Comprehensive event history tracking sync timestamps, offsets, latencies, and adjust actions with instant CSV export for regulatory and compliance audits.
+### 📡 4. Intelligent Offline Detection & Live Countdown
+- **Zero False-Positives**: If network connectivity drops or DNS fails, TrueTime immediately reflects offline status—eliminating deceptive false "In Sync" readings.
+- **Real-Time Live Countdown**: Displays a live second-by-second countdown timer until the next automated retry, instantly waking up the moment connectivity returns via `NetworkChange.NetworkAvailabilityChanged`.
+
+### 🛡️ 5. Motherboard Crystal Drift (PPM) & RMS Jitter Telemetry
+- **Hardware RTC Drift**: Measures hardware quartz crystal deviation in **Parts Per Million (PPM)**.
+- **RMS Jitter Calculation**: Real-time statistical Root-Mean-Square dispersion across all responding stratum servers.
+- **Local LAN NTP Daemon**: Broadcasts stratum-2 authoritative time across your local network for IoT devices, servers, and virtual machines without requiring external internet access.
 
 ---
 
 ## 📊 Comparison with Alternatives
 
-| Capability | TrueTime Professional | Legacy NetTime | Windows w32time |
-| :--- | :---: | :---: | :---: |
-| **Modern Windows 11 Fluent Dashboard** | ✅ **Yes** (Slate Theme) | ❌ No (Win95 Dialog) | ❌ No GUI |
-| **Concurrent UDP 123 Multi-Server Polling** | ✅ **Yes** (Parallel) | ❌ Sequential Only | ❌ Single Server |
-| **Hardware Quartz RTC Drift in PPM** | ✅ **Yes** | ❌ No | ❌ No |
-| **Authoritative Pool Jitter Metrics (RMS)** | ✅ **Yes** | ❌ No | ❌ No |
-| **Integrated Local LAN NTP Daemon Server** | ✅ **Yes** (Built-in UDP 123) | ⚠️ Partial | ⚠️ Registry Hack |
-| **Intelligent Offline Detection & Live Countdown** | ✅ **Yes** (1s Precision) | ❌ No | ❌ No |
-| **Single-Instance Foreground Pop-up** | ✅ **Yes** (UIPI Safe) | ⚠️ Basic | N/A |
-| **Clean WiX 5 Enterprise MSI Package** | ✅ **Yes** (GPO / Intune Ready) | ❌ No | Built-in |
-| **64-bit Native .NET 8 Architecture** | ✅ **Yes** | ❌ 32-bit Legacy Delphi | Native C++ |
-| **Audit Log with One-Click CSV Export** | ✅ **Yes** | ❌ No | ⚠️ Event Viewer |
+| Feature / Capability | TrueTime Professional | Legacy NetTime | Windows w32time | Dimension 4 |
+| :--- | :---: | :---: | :---: | :---: |
+| **Modern Fluent Glassmorphic GUI** | ✅ **Yes** (Dark Obsidian) | ❌ No (Win95 UI) | ❌ No GUI | ❌ WinXP Legacy |
+| **Concurrent UDP 123 Parallel Benchmark** | ✅ **Yes (⚡ 1-Click)** | ❌ Sequential Only | ❌ Single Host | ❌ Sequential |
+| **1-Click Diagnostics & Self-Healing Doctor** | ✅ **Yes (🩺 Built-in)** | ❌ No | ❌ No | ❌ No |
+| **Authentic Branded Time Server Logos** | ✅ **Yes (Vector Clean)** | ❌ No | ❌ No | ❌ No |
+| **Active Offline Detection & Countdown** | ✅ **Yes (Live 1s)** | ❌ No | ❌ No | ❌ No |
+| **Hardware RTC Crystal Drift in PPM** | ✅ **Yes** | ❌ No | ❌ No | ❌ No |
+| **Pool Dispersion & RMS Jitter Telemetry** | ✅ **Yes** | ❌ No | ❌ No | ❌ No |
+| **Integrated Local Subnet LAN NTP Server** | ✅ **Yes (Built-in)** | ⚠️ Partial | ⚠️ Registry Hack | ❌ No |
+| **Clean Enterprise MSI Package** | ✅ **Yes (1.47 MB)** | ❌ No | Built-in | ❌ No |
+| **Lightweight App Footprint** | ✅ **Yes (< 3 MB)** | ✅ Yes | N/A | ✅ Yes |
+| **Audit Logging & One-Click CSV Export** | ✅ **Yes** | ❌ No | ⚠️ Event Viewer | ❌ No |
 
 ---
 
 ## 🏛️ Architecture
 
-TrueTime is engineered as a decoupled, fault-tolerant two-tier architecture:
+TrueTime operates as a decoupled, fault-tolerant two-tier architecture:
 
 ```
                   ┌────────────────────────────────────────────────────────┐
-                  │ Authoritative NTP Servers (pool.ntp.org, cloudflare...)│
+                  │ Authoritative NTP Servers (Cloudflare, Google, NIST...)│
                   └───────────────────────────▲────────────────────────────┘
                                               │ UDP 123 (Parallel)
                                               ▼
-  ┌──────────────────────────────────────────────────────────────────────────────────────┐
-  │ TrueTimeService.exe (Background Windows Service)                                     │
-  │ • Runs under LocalSystem with SE_SYSTEMTIME_NAME privilege                           │
-  │ • Concurrent SNTP query coordinator & RTC Crystal PPM drift analyzer                 │
-  │ • Integrated LAN NTP broadcast daemon (UDP port 123)                                 │
-  │ • IPC Named Pipe Server (\\.\pipe\TrueTimePipe with SDDL security)                    │
-  │ • Shared persistent configuration: %ProgramData%\TrueTime\settings.json            │
-  └───────────────────────────────────────────▲──────────────────────────────────────────┘
-                                              │ Secure Win32 Named Pipe
+┌─────────────────────────────────────────────────────────────────────────────────────────┐
+│ TrueTime Windows Service (TrueTimeService.exe)                                          │
+│  - Session 0 Background Daemon (starts on Windows boot, runs without user login)        │
+│  - Parallel SNTP Query Engine & Lowest-Latency Statistical Filter                       │
+│  - Kernel Clock Adjuster (SetSystemTime / SetLocalTime precision adjustment)            │
+│  - Local LAN UDP 123 Stratum-2 Broadcast Daemon                                         │
+│  - Real-Time Named Pipe IPC Server (\\.\pipe\TrueTimePipe with SDDL security)       │
+└─────────────────────────────────────────────▲───────────────────────────────────────────┘
+                                              │ Named Pipe IPC
                                               ▼
-  ┌──────────────────────────────────────────────────────────────────────────────────────┐
-  │ TrueTime.Tray.exe (Desktop System Tray Dashboard)                                    │
-  │ • Unprivileged interactive user session application                                  │
-  │ • Windows 11 Fluent design with custom double-buffered GDI+ rendering                │
-  │ • Live second-by-second countdown & network availability event listener              │
-  │ • Inter-process window activation via RegisterWindowMessage (WM_SHOW_TRUETIME)       │
-  └──────────────────────────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────────────────────┐
+│ TrueTime Tray Dashboard (TrueTime.Tray.exe)                                             │
+│  - Fluent Dark Obsidian Glass UI with Native DWM Dark Titlebar                          │
+│  - Real-Time Millisecond Drift & Live Countdown Telemetry                               │
+│  - ⚡ Parallel Multi-Server Benchmark & Auto-Optimizer Engine                           │
+│  - 🩺 1-Click Self-Healing Diagnostics Doctor & Port Conflict Shield                     │
+│  - High-DPI Vector Branded NTP Logos & Audit Log CSV Exporter                           │
+└─────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 📦 Downloads & Releases
+## 💻 Enterprise Deployment & Silent Installation
 
-Release binaries are published under [GitHub Releases](https://github.com/Tabish955/TrueTime/releases).
-
-| Package | Format | Architecture | Size | Description |
-| :--- | :---: | :---: | :---: | :--- |
-| **[TrueTimeSetup.msi](https://github.com/Tabish955/TrueTime/releases/latest/download/TrueTimeSetup.msi)** | MSI | Windows x64 | ~1.4 MB | Native WiX 5 Windows Installer. Automatically registers the Windows Service, configures auto-start, and installs shortcuts. Ideal for enterprise GPO / Intune deployments. |
-| **[TrueTimeSetup.exe](https://github.com/Tabish955/TrueTime/releases/latest/download/TrueTimeSetup.exe)** | EXE | Windows x64 | ~3.0 MB | Interactive Inno Setup wizard. Automatically starts service and launches tray application immediately upon installation completion. |
-| **[TrueTime-v1.0.0-Portable.zip](https://github.com/Tabish955/TrueTime/releases/latest/download/TrueTime-v1.0.0-Portable.zip)** | ZIP | Windows x64 | ~1.0 MB | Standalone portable archive. Includes one-click `install.bat` and `uninstall.bat` scripts for flash drives and air-gapped systems. |
-
-### 🔒 Cryptographic Verification (SHA-256 Checksums)
-
-```text
-6290A7D084EA41821D14B201ED175AE7060381DFEB147EC07058DBDF577C4096  TrueTimeSetup.msi
-2B22B3CB71414C323345B8F587521DF05343126F9D1C46044A376AD20D1977D4  TrueTimeSetup.exe
-9ABBB3D3B520EACCBD0F3D81F14CF88E430C858219741AD698C96F9644DC2F99  TrueTime-v1.0.0-Portable.zip
-```
-
----
-
-## 🚀 Enterprise Deployment & Silent Installation
-
-### Active Directory / Microsoft Intune / SCCM (MSI)
+### WiX 5 Enterprise MSI Package (`.msi`)
 ```powershell
-# Unattended silent installation with logging
-msiexec.exe /i TrueTimeSetup.msi /qn /norestart /l*v C:\Windows\Temp\TrueTime_Install.log
+# Completely silent installation (starts service & tray automatically)
+msiexec.exe /i TrueTimeSetup.msi /qn /norestart
 
 # Silent uninstallation
 msiexec.exe /x TrueTimeSetup.msi /qn /norestart
 ```
 
-### Inno Setup Installer (.exe)
+### Inno Setup Installer (`.exe`)
 ```powershell
 # Completely silent unattended install
 TrueTimeSetup.exe /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP-
@@ -143,54 +155,14 @@ TrueTimeSetup.exe /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP-
 
 ---
 
-## 🛠️ Building from Source
+## 🛡️ Security, Privacy & Integrity
 
-### Prerequisites
-- **Windows 10 / 11** or **Windows Server 2016+** (x64)
-- **.NET 8.0 SDK** (v8.0.100 or newer)
-- **WiX Toolset v5** (`dotnet tool install --global wix`)
-- **Inno Setup 6** (for compiling `SetupScript.iss`)
-
-### Build Steps
-
-1. **Clone the repository:**
-   ```bash
-   git clone https://github.com/Tabish955/TrueTime.git
-   cd TrueTime
-   ```
-
-2. **Compile the solution:**
-   ```powershell
-   dotnet build NetTimeService/NetTimeService.sln -c Release
-   ```
-
-3. **Publish clean release binaries:**
-   ```powershell
-   .\publish.bat
-   ```
-
-4. **Build Installers:**
-   ```powershell
-   # 1. Compile WiX 5 MSI Package
-   wix build -arch x64 Package.wxs -ext WixToolset.UI.wixext -ext WixToolset.Util.wixext -o Output\TrueTimeSetup.msi
-
-   # 2. Compile Inno Setup Executable
-   & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" SetupScript.iss
-
-   # 3. Create Portable Zip
-   Compress-Archive -Path publish\* -DestinationPath Output\TrueTime-v1.0.0-Portable.zip -Force
-   ```
-
----
-
-## 🛡️ Security & Integrity
-
-- **Zero Third-Party Telemetry**: TrueTime communicates exclusively with configured NTP time servers over UDP port 123. It performs zero analytics, tracking, or outbound HTTP requests.
-- **Unpacked Native Assemblies**: Compiled directly into transparent, uncompressed native assemblies without third-party packers, protector wrappers, or obfuscation tools, ensuring clean reputation and zero false-positive security scanner detections.
-- **Secure IPC**: Inter-process communication across the named pipe enforces Strict Security Descriptor Definition Language (SDDL) rules allowing access strictly to LocalSystem, Administrators, and Authenticated Users.
+- **Clean Security Reputation**: Built with standard, uncompressed .NET 8 framework-dependent native binaries without third-party packers, protector wrappers, or obfuscators, preventing heuristic false positives on VirusTotal.
+- **Zero Outbound Telemetry**: TrueTime communicates strictly with user-configured NTP time servers over UDP 123. It contains zero analytics, tracking, advertising, or unsolicited HTTP calls.
+- **Hardened Named Pipe Security**: IPC pipe enforces Strict Security Descriptor Definition Language (SDDL) allowing communication strictly between LocalSystem, Administrators, and Authenticated Users.
 
 ---
 
 ## 📄 License
 
-This project is licensed under the **MIT License**. See the [LICENSE](LICENSE) file for complete details.
+This project is licensed under the **MIT License**. See the [LICENSE](LICENSE) file for details.
